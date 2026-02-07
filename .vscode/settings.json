@@ -1,0 +1,16 @@
+{
+  "terminal.integrated.defaultProfile.windows": "Command Prompt (No Profile)",
+  "terminal.integrated.profiles.windows": {
+    "Command Prompt (No Profile)": {
+      "path": "C:\\Windows\\System32\\cmd.exe",
+      "args": []
+    }
+  },
+  "terminal.integrated.automationProfile.windows": {
+    "path": "C:\\Windows\\System32\\cmd.exe"
+  },
+  "terminal.integrated.shellIntegration.enabled": false,
+  "terminal.integrated.env.windows": {
+    "NVM_SYMLINK": ""
+  }
+}

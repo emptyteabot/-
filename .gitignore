@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env.local
+.env
+
+# Build outputs
+.next/
+dist/
+out/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Private keys
+*.key
+*.pem
+*.crt
+
+# Local tunnel logs
+tools/logs/localtunnel.*
+tools/logs/next-server.*
+
+# Processed media
+processed_images/
+temp/
+tmp/
+
+# Database
+*.db
+*.sqlite
+
+# Cache
+.cache/
+.nyc_output
+coverage/
+
+# Vercel
+.vercel/
