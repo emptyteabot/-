@@ -23,6 +23,16 @@ export function trackGrowthEvent(event: Omit<GrowthEvent, 'at'>): void {
     const list: GrowthEvent[] = raw ? JSON.parse(raw) : []
     list.push({ ...event, at: Date.now() })
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(-5000)))
+
+    // If PostHog is configured, send a copy for real cross-user analytics.
+    const ph = (window as any).posthog
+    if (ph && typeof ph.capture === 'function') {
+      ph.capture(event.name, {
+        page: event.page,
+        source: event.source,
+        detail: event.detail,
+      })
+    }
   } catch {
     // no-op
   }
@@ -46,4 +56,3 @@ export function clearGrowthEvents(): void {
     // no-op
   }
 }
-

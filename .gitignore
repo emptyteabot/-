@@ -47,3 +47,7 @@ coverage/
 
 # Vercel
 .vercel/
+
+# Cloudflare
+.wrangler/
+.open-next/

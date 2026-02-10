@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import ShareButton from '@/components/ShareButton'
 import { trackGrowthEvent } from '@/lib/growth'
@@ -34,9 +34,11 @@ export default function AIFortunePage() {
   const [category, setCategory] = useState<TarotCategory>('综合')
   const [cards, setCards] = useState<TarotCardData[]>([])
   const [reading, setReading] = useState('')
+  const [lockedTarot, setLockedTarot] = useState(false)
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [consented, setConsented] = useState(false)
 
   // 每日运势
   const [birthYear, setBirthYear] = useState('')
@@ -44,14 +46,50 @@ export default function AIFortunePage() {
   const [birthDay, setBirthDay] = useState('')
   const [birthHour, setBirthHour] = useState<number | ''>('')
   const [dailyResult, setDailyResult] = useState<any>(null)
+  const [lockedDaily, setLockedDaily] = useState(false)
   const birthday = birthYear && birthMonth && birthDay ? `${birthYear}-${birthMonth}-${birthDay}` : ''
 
   // 分享截图 ref
   const tarotResultRef = useRef<HTMLDivElement>(null)
   const dailyResultRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    const resume = new URLSearchParams(window.location.search).get('resume')
+    if (resume !== '1') return
+    try {
+      const raw = sessionStorage.getItem('soul-lab-fortune-last') || ''
+      if (!raw) return
+      const last = JSON.parse(raw)
+      setConsented(true)
+      if (last.type === 'tarot') {
+        setQuestion(last.question || '')
+        setCategory(last.category || '综合')
+        setMode('tarot-select')
+        // defer one tick so state is applied
+        setTimeout(() => startTarotReading(), 0)
+      } else if (last.type === 'daily') {
+        setBirthYear(last.birthYear || '')
+        setBirthMonth(last.birthMonth || '')
+        setBirthDay(last.birthDay || '')
+        setBirthHour(last.birthHour ?? '')
+        setMode('daily-input')
+        setTimeout(() => getDailyFortune(), 0)
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ========== 塔罗牌流程 ==========
   const startTarotReading = async () => {
+    if (!consented) {
+      setError('请先勾选同意协议与隐私政策')
+      return
+    }
+    try {
+      sessionStorage.setItem('soul-lab-fortune-last', JSON.stringify({ type: 'tarot', question, category }))
+    } catch {}
     trackGrowthEvent({ name: 'analysis_start', page: '/ai-fortune', detail: 'tarot' })
     setLoading(true)
     setError('')
@@ -74,6 +112,7 @@ export default function AIFortunePage() {
       const data = await res.json()
       setCards(data.cards)
       setReading(data.reading)
+      setLockedTarot(!!data.locked)
       setFlippedCards(new Set())
       setMode('tarot-reading')
       trackGrowthEvent({ name: 'analysis_done', page: '/ai-fortune', detail: 'tarot' })
@@ -99,6 +138,13 @@ export default function AIFortunePage() {
       setError('请选择完整的出生日期（年、月、日）')
       return
     }
+    if (!consented) {
+      setError('请先勾选同意协议与隐私政策')
+      return
+    }
+    try {
+      sessionStorage.setItem('soul-lab-fortune-last', JSON.stringify({ type: 'daily', birthYear, birthMonth, birthDay, birthHour }))
+    } catch {}
     trackGrowthEvent({ name: 'analysis_start', page: '/ai-fortune', detail: 'daily' })
     setLoading(true)
     setError('')
@@ -120,6 +166,7 @@ export default function AIFortunePage() {
 
       const data = await res.json()
       setDailyResult(data)
+      setLockedDaily(!!data.locked)
       setMode('daily-result')
       trackGrowthEvent({ name: 'analysis_done', page: '/ai-fortune', detail: 'daily' })
     } catch (err: any) {
@@ -133,17 +180,19 @@ export default function AIFortunePage() {
     setMode('menu')
     setCards([])
     setReading('')
+    setLockedTarot(false)
     setFlippedCards(new Set())
     setDailyResult(null)
+    setLockedDaily(false)
     setError('')
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0b1a]">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="fixed top-0 w-full z-50 backdrop-blur-xl bg-[#0d0b1a]/80 border-b border-fortune-purple/20 px-6 py-4">
+      <header className="fixed top-0 w-full z-50 bg-white/85 backdrop-blur border-b border-slate-200 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-white/60 hover:text-white/90 transition-colors">
+          <Link href="/" className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -198,8 +247,8 @@ export default function AIFortunePage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
                       </span>
-                      <span className="text-white/20 text-xs">|</span>
-                      <span className="text-white/30 line-through text-xs">¥19.9/次</span>
+                      <span className="text-slate-300 text-xs">|</span>
+                      <span className="text-slate-400 line-through text-xs">¥19.9/次</span>
                     </div>
                   </div>
                 </div>
@@ -229,8 +278,8 @@ export default function AIFortunePage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
                       </span>
-                      <span className="text-white/20 text-xs">|</span>
-                      <span className="text-white/30 line-through text-xs">¥9.9/次</span>
+                      <span className="text-slate-300 text-xs">|</span>
+                      <span className="text-slate-400 line-through text-xs">¥9.9/次</span>
                     </div>
                   </div>
                 </div>
@@ -247,6 +296,18 @@ export default function AIFortunePage() {
                 上传聊天记录，AI 帮你看穿他的心 →
               </Link>
             </div>
+
+            <label className="mt-6 flex items-start gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={consented}
+                onChange={(e) => setConsented(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                我已阅读并同意 <Link href="/terms" className="text-purple-300 hover:text-purple-200">用户协议</Link> 与 <Link href="/privacy" className="text-purple-300 hover:text-purple-200">隐私政策</Link>，并确认我提供的信息为本人或已获授权。
+              </span>
+            </label>
           </div>
         )}
 
@@ -257,6 +318,10 @@ export default function AIFortunePage() {
               <div className="text-6xl mb-4">🃏</div>
               <h1 className="text-3xl font-black mb-2 text-fortune-text">选择你的命题</h1>
               <p className="text-fortune-muted">集中精神，想着你最想知道的事情</p>
+            </div>
+
+            <div className="mb-6 rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 leading-5">
+              提示：本服务为参考与娱乐用途，提交内容将发送至第三方 AI 服务生成结果。继续即表示你同意协议与隐私政策。
             </div>
 
             {/* 问题分类 */}
@@ -284,7 +349,7 @@ export default function AIFortunePage() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="例如：我和 TA 还有没有可能？/ 这份工作值得跳槽吗？"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-fortune-text placeholder-fortune-muted/50 focus:outline-none focus:border-fortune-purple/50 resize-none h-24"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-fortune-text placeholder-fortune-muted/70 focus:outline-none focus:border-fortune-purple/60 resize-none h-24"
               />
             </div>
 
@@ -315,7 +380,7 @@ export default function AIFortunePage() {
 
             <button
               onClick={resetAll}
-              className="mt-4 w-full py-3 rounded-xl border border-white/10 text-fortune-muted hover:text-fortune-text hover:border-white/20 transition-all text-sm"
+              className="mt-4 w-full py-3 rounded-xl border border-slate-200 text-fortune-muted hover:text-fortune-text hover:border-slate-300 transition-all text-sm"
             >
               ← 返回
             </button>
@@ -379,6 +444,22 @@ export default function AIFortunePage() {
               {/* AI 解读 */}
               <div className="glass-card p-8 md:p-12 mb-8">
                 <h2 className="text-2xl font-black text-gradient-fortune mb-6">🔮 命运解读</h2>
+                {lockedTarot && (
+                  <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <div className="font-bold">这是试读版解读</div>
+                    <div className="mt-1 text-amber-100/80 text-xs leading-5">
+                      解锁完整版后会更长、更具体（包含更多细节与行动建议）。解锁后刷新本页即可生效。
+                    </div>
+                    <div className="mt-3">
+                      <Link
+                        href="/pay?product=fortune-tarot"
+                        className="inline-flex items-center justify-center rounded-xl bg-amber-500/20 border border-amber-400/30 px-4 py-2 text-xs text-amber-100 hover:bg-amber-500/30"
+                      >
+                        去解锁完整版
+                      </Link>
+                    </div>
+                  </div>
+                )}
                 <div className="prose prose-invert max-w-none prose-p:text-fortune-text/80 prose-p:leading-relaxed prose-h2:text-fortune-accent prose-h3:text-fortune-text prose-strong:text-fortune-text">
                   <div dangerouslySetInnerHTML={{ __html: formatFortuneText(reading) }} />
                 </div>
@@ -398,7 +479,7 @@ export default function AIFortunePage() {
                 />
                 <button
                   onClick={() => { setMode('tarot-select'); setCards([]); setReading(''); setFlippedCards(new Set()) }}
-                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-fortune-muted hover:text-fortune-text hover:border-white/20 transition-all text-sm"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-fortune-muted hover:text-fortune-text hover:border-slate-300 transition-all text-sm"
                 >
                   🃏 再抽一次
                 </button>
@@ -489,7 +570,7 @@ export default function AIFortunePage() {
                     className={`py-2 rounded-lg text-sm transition-all ${
                       String(birthHour) === v || (v === '' && birthHour === '')
                         ? 'bg-fortune-accent/20 border border-fortune-accent/40 text-fortune-accent'
-                        : 'bg-white/5 border border-white/10 text-fortune-muted hover:border-fortune-purple/30'
+                        : 'bg-white border border-slate-200 text-fortune-muted hover:border-fortune-purple/30'
                     }`}
                   >
                     {label}
@@ -528,7 +609,7 @@ export default function AIFortunePage() {
 
             <button
               onClick={resetAll}
-              className="mt-4 w-full py-3 rounded-xl border border-white/10 text-fortune-muted hover:text-fortune-text hover:border-white/20 transition-all text-sm"
+              className="mt-4 w-full py-3 rounded-xl border border-slate-200 text-fortune-muted hover:text-fortune-text hover:border-slate-300 transition-all text-sm"
             >
               ← 返回
             </button>
@@ -616,6 +697,22 @@ export default function AIFortunePage() {
               {/* AI 运势报告 */}
               <div className="glass-card p-8 md:p-12 mb-8">
                 <h2 className="text-2xl font-black text-gradient-fortune mb-6">✨ 今日运势详解</h2>
+                {lockedDaily && (
+                  <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <div className="font-bold">这是试读版运势</div>
+                    <div className="mt-1 text-amber-100/80 text-xs leading-5">
+                      解锁完整版后会包含更细的场景建议与补充分析。解锁后刷新本页即可生效。
+                    </div>
+                    <div className="mt-3">
+                      <Link
+                        href="/pay?product=fortune-daily"
+                        className="inline-flex items-center justify-center rounded-xl bg-amber-500/20 border border-amber-400/30 px-4 py-2 text-xs text-amber-100 hover:bg-amber-500/30"
+                      >
+                        去解锁完整版
+                      </Link>
+                    </div>
+                  </div>
+                )}
                 <div className="prose prose-invert max-w-none prose-p:text-fortune-text/80 prose-p:leading-relaxed prose-h2:text-fortune-accent prose-h3:text-fortune-text prose-strong:text-fortune-text prose-li:text-fortune-text/70">
                   <div dangerouslySetInnerHTML={{ __html: formatFortuneText(dailyResult.fortune || '') }} />
                 </div>
@@ -634,7 +731,7 @@ export default function AIFortunePage() {
                 />
                 <button
                   onClick={resetAll}
-                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-fortune-muted hover:text-fortune-text hover:border-white/20 transition-all text-sm"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-fortune-muted hover:text-fortune-text hover:border-slate-300 transition-all text-sm"
                 >
                   🔮 换种算法
                 </button>

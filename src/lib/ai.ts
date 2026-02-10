@@ -1,49 +1,57 @@
 import OpenAI from 'openai'
 
-/**
- * 双引擎 AI 系统
- * 主力: Claude Sonnet 4.5 (via 12AI) — 输出质量更高
- * 备胎: DeepSeek — Claude 挂了自动切换
- */
+type ChatOptions = { temperature?: number; maxTokens?: number }
 
-// ========== 主力 AI (Claude via 12AI OpenAI兼容接口) ==========
-function getPrimaryClient() {
-  const apiKey = process.env.AI_API_KEY
-  const baseURL = process.env.AI_BASE_URL
+function makeClient(apiKey?: string, baseURL?: string) {
   if (!apiKey || !baseURL) return null
   return new OpenAI({ apiKey, baseURL })
 }
 
-function getPrimaryModel() {
-  return process.env.AI_MODEL || 'claude-sonnet-4-5-20250929'
+function primary() {
+  return {
+    client: makeClient(process.env.AI_API_KEY, process.env.AI_BASE_URL),
+    model: process.env.AI_MODEL || 'claude-sonnet-4-5-20250929',
+    label: 'primary',
+  }
 }
 
-// ========== 备胎 AI (DeepSeek) ==========
-function getFallbackClient() {
-  const apiKey = process.env.AI_FALLBACK_API_KEY
-  const baseURL = process.env.AI_FALLBACK_BASE_URL
-  if (!apiKey || !baseURL) return null
-  return new OpenAI({ apiKey, baseURL })
+function fallback() {
+  return {
+    client: makeClient(process.env.AI_FALLBACK_API_KEY, process.env.AI_FALLBACK_BASE_URL),
+    model: process.env.AI_FALLBACK_MODEL || 'deepseek-chat',
+    label: 'fallback',
+  }
 }
 
-function getFallbackModel() {
-  return process.env.AI_FALLBACK_MODEL || 'deepseek-chat'
+// OCR should use a vision-capable provider/model. If unset, we reuse primary/fallback.
+function ocrPrimary() {
+  return {
+    client: makeClient(process.env.AI_OCR_API_KEY, process.env.AI_OCR_BASE_URL) || primary().client,
+    model: process.env.AI_OCR_MODEL || primary().model,
+    label: process.env.AI_OCR_BASE_URL || process.env.AI_OCR_API_KEY || process.env.AI_OCR_MODEL ? 'ocr_primary' : 'primary',
+  }
 }
 
-// ========== 统一调用(自动容灾) ==========
+function ocrFallback() {
+  return {
+    client: makeClient(process.env.AI_OCR_FALLBACK_API_KEY, process.env.AI_OCR_FALLBACK_BASE_URL) || fallback().client,
+    model: process.env.AI_OCR_FALLBACK_MODEL || fallback().model,
+    label:
+      process.env.AI_OCR_FALLBACK_BASE_URL || process.env.AI_OCR_FALLBACK_API_KEY || process.env.AI_OCR_FALLBACK_MODEL
+        ? 'ocr_fallback'
+        : 'fallback',
+  }
+}
 
-/** 基础 AI 对话 — 自动主力/备胎切换 */
-export async function chatCompletion(
-  systemPrompt: string,
-  userMessage: string,
-  options?: { temperature?: number; maxTokens?: number }
-): Promise<string> {
-  // 1️⃣ 先试主力 (Claude)
-  const primary = getPrimaryClient()
-  if (primary) {
+export async function chatCompletion(systemPrompt: string, userMessage: string, options?: ChatOptions): Promise<string> {
+  const tries = [primary(), fallback()]
+  const errors: string[] = []
+
+  for (const t of tries) {
+    if (!t.client) continue
     try {
-      const response = await primary.chat.completions.create({
-        model: getPrimaryModel(),
+      const response = await t.client.chat.completions.create({
+        model: t.model,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
@@ -51,49 +59,28 @@ export async function chatCompletion(
         temperature: options?.temperature ?? 0.8,
         max_tokens: options?.maxTokens ?? 4096,
       })
+
       const content = response.choices[0]?.message?.content
-      if (content) {
-        console.log(`[AI] ✅ Claude 响应成功 (${content.length}字)`)
-        return content
-      }
+      if (content) return content
+      errors.push(`${t.label}(${t.model}): empty-content`)
     } catch (err: any) {
-      console.error(`[AI] ⚠️ Claude 失败: ${err.message}, 切换到备胎...`)
+      const msg = err?.message ? String(err.message) : String(err)
+      console.error(`[AI] ${t.label} failed: ${msg}`)
+      errors.push(`${t.label}(${t.model}): ${msg}`)
     }
   }
 
-  // 2️⃣ 备胎 (DeepSeek)
-  const fallback = getFallbackClient()
-  if (fallback) {
-    try {
-      const response = await fallback.chat.completions.create({
-        model: getFallbackModel(),
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-        temperature: options?.temperature ?? 0.8,
-        max_tokens: options?.maxTokens ?? 4096,
-      })
-      const content = response.choices[0]?.message?.content
-      if (content) {
-        console.log(`[AI] ✅ DeepSeek 备胎响应成功 (${content.length}字)`)
-        return content
-      }
-    } catch (err: any) {
-      console.error(`[AI] ❌ DeepSeek 也失败了: ${err.message}`)
-      throw new Error('AI 服务暂时不可用，请稍后再试')
-    }
+  if (!primary().client && !fallback().client) {
+    throw new Error('未配置任何 AI API：请检查 .env.local / Vercel 环境变量 (AI_API_KEY/AI_BASE_URL 等)。')
   }
-
-  throw new Error('未配置任何 AI API，请检查 .env.local')
+  throw new Error(`AI 服务暂时不可用，请稍后重试。详情: ${errors.join(' | ')}`)
 }
 
-/** 带图片的 AI 对话 — 用于 OCR 截图识别 */
 export async function chatWithImages(
   systemPrompt: string,
   userText: string,
   imageBase64List: string[],
-  options?: { temperature?: number; maxTokens?: number }
+  options?: ChatOptions
 ): Promise<string> {
   const content: any[] = imageBase64List.map(img => ({
     type: 'image_url',
@@ -106,58 +93,48 @@ export async function chatWithImages(
     { role: 'user' as const, content },
   ]
 
-  // 主力 Claude (支持视觉)
-  const primary = getPrimaryClient()
-  if (primary) {
+  const tries = [ocrPrimary(), ocrFallback()]
+  const errors: string[] = []
+
+  for (const t of tries) {
+    if (!t.client) continue
     try {
-      const response = await primary.chat.completions.create({
-        model: getPrimaryModel(),
+      const response = await t.client.chat.completions.create({
+        model: t.model,
         messages,
-        temperature: options?.temperature ?? 0.3,
+        temperature: options?.temperature ?? 0.2,
         max_tokens: options?.maxTokens ?? 4096,
       })
       const result = response.choices[0]?.message?.content
-      if (result) {
-        console.log(`[AI] ✅ Claude 图片识别成功 (${result.length}字)`)
-        return result
-      }
+      if (result && result.trim()) return result
+      errors.push(`${t.label}(${t.model}): empty-content`)
     } catch (err: any) {
-      console.error(`[AI] ⚠️ Claude 图片识别失败: ${err.message}`)
+      const msg = err?.message ? String(err.message) : String(err)
+      console.error(`[AI] ${t.label} image call failed: ${msg}`)
+      errors.push(`${t.label}(${t.model}): ${msg}`)
     }
   }
 
-  // 备胎 DeepSeek (也支持视觉)
-  const fallback = getFallbackClient()
-  if (fallback) {
-    try {
-      const response = await fallback.chat.completions.create({
-        model: getFallbackModel(),
-        messages,
-        temperature: options?.temperature ?? 0.3,
-        max_tokens: options?.maxTokens ?? 4096,
-      })
-      const result = response.choices[0]?.message?.content
-      if (result) return result
-    } catch (err: any) {
-      console.error(`[AI] ❌ DeepSeek 图片识别也失败: ${err.message}`)
-    }
-  }
-
-  throw new Error('图片识别失败，请重试')
+  // This is the key user-facing hint: most likely a non-vision model was used.
+  throw new Error(
+    `OCR失败：当前模型/接口可能不支持图片输入(image_url)。` +
+      `请在环境变量里配置 AI_OCR_BASE_URL + AI_OCR_MODEL 为“支持视觉(vision)”的模型后重试。` +
+      ` 详情: ${errors.join(' | ')}`
+  )
 }
 
-/** 流式 AI 对话 — 自动主力/备胎切换 */
 export async function* chatCompletionStream(
   systemPrompt: string,
   userMessage: string,
-  options?: { temperature?: number; maxTokens?: number }
+  options?: ChatOptions
 ): AsyncGenerator<string> {
-  // 1️⃣ 先试主力 (Claude)
-  const primary = getPrimaryClient()
-  if (primary) {
+  const tries = [primary(), fallback()]
+
+  for (const t of tries) {
+    if (!t.client) continue
     try {
-      const stream = await primary.chat.completions.create({
-        model: getPrimaryModel(),
+      const stream = await t.client.chat.completions.create({
+        model: t.model,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
@@ -166,35 +143,18 @@ export async function* chatCompletionStream(
         max_tokens: options?.maxTokens ?? 4096,
         stream: true,
       })
+
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content
         if (content) yield content
       }
       return
     } catch (err: any) {
-      console.error(`[AI] ⚠️ Claude 流式失败: ${err.message}, 切换备胎...`)
+      const msg = err?.message ? String(err.message) : String(err)
+      console.error(`[AI] ${t.label} stream failed: ${msg}`)
     }
   }
 
-  // 2️⃣ 备胎 (DeepSeek)
-  const fallback = getFallbackClient()
-  if (fallback) {
-    const stream = await fallback.chat.completions.create({
-      model: getFallbackModel(),
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      temperature: options?.temperature ?? 0.8,
-      max_tokens: options?.maxTokens ?? 4096,
-      stream: true,
-    })
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content
-      if (content) yield content
-    }
-    return
-  }
-
-  throw new Error('未配置任何 AI API')
+  throw new Error('AI 流式服务暂时不可用，请稍后重试。')
 }
+

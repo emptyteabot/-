@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { chatCompletion } from '@/lib/ai'
+import { growthModeEnabled, isPaid } from '@/lib/paywall'
 
 /**
  * 爆文洗稿机 API
@@ -77,6 +78,15 @@ export async function POST(req: NextRequest) {
       promoTarget, // 'soul' | 'fortune' | 'both' | 'none'
       topic,       // 用于生成时的主题
     } = body
+
+    // Paywall: allow free title ideas, but require unlock for heavy generations (unless growth mode is enabled).
+    const paid = growthModeEnabled() || (await isPaid('launderer'))
+    if (!paid && (type === 'rewrite' || type === 'generate')) {
+      return NextResponse.json(
+        { error: '该功能需要解锁后使用', pay: { product: 'launderer' } },
+        { status: 402 }
+      )
+    }
 
     if (type === 'rewrite') {
       if (!content) {

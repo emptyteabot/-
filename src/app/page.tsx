@@ -6,14 +6,6 @@ import { trackGrowthEvent } from '@/lib/growth'
 
 export default function HomePage() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
-  const [userCount, setUserCount] = useState(302847)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setUserCount(prev => prev + Math.floor(Math.random() * 3) + 1)
-    }, 5000 + Math.random() * 10000)
-    return () => clearInterval(interval)
-  }, [])
 
   const projects = [
     {
@@ -26,7 +18,7 @@ export default function HomePage() {
       gradient: 'from-rose-400 via-pink-500 to-purple-500',
       glowColor: 'rgba(244, 114, 182, 0.3)',
       price: '✨ 限时免费',
-      tag: '🔥 30万+姐妹都在用',
+      tag: '🔥 内测开放中',
     },
     {
       id: 2,
@@ -38,7 +30,7 @@ export default function HomePage() {
       gradient: 'from-violet-400 via-purple-500 to-indigo-500',
       glowColor: 'rgba(167, 139, 250, 0.3)',
       price: '✨ 限时免费',
-      tag: '✨ 今日已占 3,847 次',
+      tag: '✨ 内测开放中',
     },
   ]
 
@@ -51,12 +43,12 @@ export default function HomePage() {
           <h1 className="text-5xl md:text-7xl font-black font-display mb-4 tracking-tight">
             <span className="text-gradient-fortune">月见</span>
           </h1>
-          <p className="text-lg md:text-xl text-white/40 font-light max-w-md mx-auto">
+          <p className="text-lg md:text-xl text-slate-600 font-light max-w-md mx-auto">
             每个女人都值得看清真相，找到方向
           </p>
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-sm text-white/50">
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-sm text-slate-600">
             <span className="pulse-dot" />
-            已为 <span className="text-purple-300 font-medium">{userCount.toLocaleString()}</span> 位姐妹解读困惑
+            内测开放中，欢迎体验并分享给闺蜜
           </div>
         </div>
 
@@ -75,7 +67,7 @@ export default function HomePage() {
                 className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"
                 style={{ background: project.glowColor }}
               />
-              <div className="relative glass-card p-8 hover:bg-white/[0.08] transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
+              <div className="relative glass-card p-8 hover:shadow-md transition-all duration-300 hover:scale-[1.01]">
                 <div className="absolute top-4 right-4">
                   <span className={`text-xs px-3 py-1 rounded-full bg-gradient-to-r ${project.gradient} text-white font-medium`}>
                     {project.tag}
@@ -87,9 +79,9 @@ export default function HomePage() {
                 </div>
 
                 <h2 className="text-2xl font-bold mb-1">{project.title}</h2>
-                <p className="text-sm text-purple-300/50 mb-3">{project.subtitle}</p>
+                <p className="text-sm text-slate-500 mb-3">{project.subtitle}</p>
 
-                <p className="text-white/60 leading-relaxed mb-6">
+                <p className="text-slate-700 leading-relaxed mb-6">
                   {project.description}
                 </p>
 
@@ -97,7 +89,7 @@ export default function HomePage() {
                   <span className={`text-xl font-black bg-gradient-to-r ${project.gradient} bg-clip-text text-transparent`}>
                     {project.price}
                   </span>
-                  <span className="flex items-center gap-2 text-white/40 group-hover:text-white/80 transition-colors">
+                  <span className="flex items-center gap-2 text-slate-500 group-hover:text-slate-900 transition-colors">
                     立即体验
                     <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -112,7 +104,7 @@ export default function HomePage() {
         {/* Social Proof */}
         <div className="mt-12 max-w-2xl w-full px-4">
           <div className="glass-card-dark p-4">
-            <div className="flex items-center gap-2 text-white/30 text-xs mb-3">
+            <div className="flex items-center gap-2 text-slate-500 text-xs mb-3">
               <span>💬</span> 姐妹们的真实反馈
             </div>
             <div className="space-y-2">
@@ -123,9 +115,9 @@ export default function HomePage() {
                 { text: '终于看清了，该放手就放手吧，谢谢月见', time: '8分钟前' },
               ].map((msg, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs animate-fade-in-up" style={{ animationDelay: `${i * 0.2}s` }}>
-                  <span className="text-pink-400/40">♡</span>
-                  <span className="text-white/50 flex-1">{msg.text}</span>
-                  <span className="text-white/20 whitespace-nowrap">{msg.time}</span>
+                  <span className="text-emerald-600/50">♡</span>
+                  <span className="text-slate-700 flex-1">{msg.text}</span>
+                  <span className="text-slate-400 whitespace-nowrap">{msg.time}</span>
                 </div>
               ))}
             </div>
@@ -133,10 +125,10 @@ export default function HomePage() {
         </div>
 
         {/* Trust */}
-        <div className="mt-8 flex items-center gap-6 text-white/20 text-xs">
-          <span>🔒 隐私保护，阅后即焚</span>
+        <div className="mt-8 flex items-center gap-6 text-slate-500 text-xs">
+          <span>🔒 隐私说明透明</span>
           <span>💜 专为女性设计</span>
-          <span>⭐ 好评率 98.7%</span>
+          <span>📄 使用前请阅读协议</span>
         </div>
       </section>
     </div>

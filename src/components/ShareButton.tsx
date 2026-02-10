@@ -50,7 +50,7 @@ export default function ShareButton({
 
       // 生成截图
       const canvas = await html2canvas(target, {
-        backgroundColor: '#0d0b1a',
+        backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
         logging: false,
@@ -64,14 +64,14 @@ export default function ShareButton({
       const ctx = watermarkCanvas.getContext('2d')!
 
       // 背景
-      ctx.fillStyle = '#0d0b1a'
+      ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, watermarkCanvas.width, watermarkCanvas.height)
 
       // 原图
       ctx.drawImage(canvas, 0, padding / 2)
 
       // 底部水印
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'
+      ctx.fillStyle = 'rgba(15,23,42,0.7)'
       ctx.font = `${Math.max(16, canvas.width / 30)}px sans-serif`
       ctx.textAlign = 'center'
       ctx.fillText(
@@ -144,7 +144,7 @@ export default function ShareButton({
       className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
         shared
           ? 'bg-green-500/20 border border-green-500/30 text-green-400'
-          : 'bg-white/10 border border-white/10 text-white/70 hover:text-white hover:border-white/20 hover:bg-white/15'
+          : 'bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-50'
       } ${sharing ? 'opacity-50 cursor-wait' : ''} ${className}`}
     >
       {sharing ? (

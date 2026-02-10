@@ -72,7 +72,7 @@ export default function WechatFollow({
       {asPopup && onClose && (
         <button
           onClick={onClose}
-          className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/20 transition-all"
+          className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-slate-900/5 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-900/10 transition-all"
         >
           ✕
         </button>
@@ -80,8 +80,8 @@ export default function WechatFollow({
 
       <div className="text-center mb-4">
         <div className="text-4xl mb-2">{config.icon}</div>
-        <h3 className="text-lg font-bold text-white/90">{config.title}</h3>
-        <p className="text-white/50 text-sm mt-1">{config.desc}</p>
+        <h3 className="text-lg font-bold text-slate-900">{config.title}</h3>
+        <p className="text-slate-600 text-sm mt-1">{config.desc}</p>
       </div>
 
       {/* 公众号二维码占位 */}
@@ -107,14 +107,14 @@ export default function WechatFollow({
           {copied ? '✅ 已复制，去微信搜索' : `📋 复制公众号名: ${gzhName}`}
         </button>
 
-        {wechatId && wechatId !== 'your_wechat_id' && (
+      {wechatId && wechatId !== 'your_wechat_id' && (
           <button
             onClick={async () => {
               try { await navigator.clipboard.writeText(wechatId) } catch {}
               setCopied(true)
               setTimeout(() => setCopied(false), 3000)
             }}
-            className="w-full py-2.5 rounded-xl border border-white/10 text-white/50 text-xs hover:text-white/80 hover:border-white/20 transition-all"
+            className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs hover:text-slate-900 hover:border-slate-300 transition-all"
           >
             或加个人微信: {wechatId}
           </button>
@@ -127,12 +127,10 @@ export default function WechatFollow({
       </div>
 
       {/* 信任标识 */}
-      <div className="mt-3 flex items-center justify-center gap-3 text-white/20 text-[10px]">
-        <span>🔒 隐私保护</span>
+      <div className="mt-3 flex items-center justify-center gap-3 text-slate-500 text-[10px]">
+        <span>🔒 隐私说明透明</span>
         <span>·</span>
-        <span>📊 已服务 30 万+ 姐妹</span>
-        <span>·</span>
-        <span>⭐ 好评率 98%</span>
+        <span>📩 发送订单号获取解锁码</span>
       </div>
     </div>
   )
@@ -154,4 +152,3 @@ export default function WechatFollow({
     </div>
   )
 }
-

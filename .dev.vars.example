@@ -1,0 +1,13 @@
+# Wrangler local dev vars (copy to .dev.vars and fill real values)
+AI_API_KEY=
+AI_BASE_URL=https://api.deepseek.com/v1
+AI_MODEL=deepseek-reasoner
+
+AI_OCR_API_KEY=
+AI_OCR_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+AI_OCR_MODEL=qwen-vl-ocr
+
+# Optional
+GROWTH_MODE=true
+NEXT_PUBLIC_GROWTH_MODE=true
+

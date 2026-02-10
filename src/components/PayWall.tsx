@@ -30,7 +30,7 @@ function hasFreeTrial(productId: string): boolean {
 }
 
 /** 消耗一次免费次数 */
-function useFreeTrial(productId: string): void {
+function consumeFreeTrial(productId: string): void {
   try {
     const trials = JSON.parse(localStorage.getItem(FREE_TRIAL_KEY) || '{}')
     trials[productId] = (trials[productId] || 0) + 1
@@ -69,7 +69,7 @@ export default function PayWall({
 
     if (free && !paid) {
       // 免费体验：消耗一次
-      useFreeTrial(productId)
+      consumeFreeTrial(productId)
       setShowLock(false)
     } else if (!paid) {
       setShowLock(true)
@@ -99,14 +99,14 @@ export default function PayWall({
       </div>
 
       {/* 付费解锁卡片 */}
-      <div className="relative -mt-20 z-10 glass-card p-8 text-center mx-auto max-w-lg border-white/20">
+      <div className="relative -mt-20 z-10 glass-card p-8 text-center mx-auto max-w-lg border-slate-200">
         <div className="text-4xl mb-4">🔒</div>
-        <h3 className="text-xl font-black mb-2 text-white/90">解锁完整报告</h3>
-        <p className="text-white/50 text-sm mb-6">{hookText}</p>
+        <h3 className="text-xl font-black mb-2 text-slate-900">解锁完整报告</h3>
+        <p className="text-slate-600 text-sm mb-6">{hookText}</p>
 
         {/* 价格 */}
         <div className="flex items-center justify-center gap-3 mb-6">
-          <span className="text-white/30 line-through text-lg">¥{originalPrice}</span>
+          <span className="text-slate-400 line-through text-lg">¥{originalPrice}</span>
           <span className="text-3xl font-black text-gradient-soul">¥{currentPrice}</span>
           <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-medium animate-pulse">
             限时特价
@@ -122,7 +122,7 @@ export default function PayWall({
         </Link>
 
         {/* 权益说明 */}
-        <div className="mt-6 grid grid-cols-3 gap-3 text-white/40 text-xs">
+        <div className="mt-6 grid grid-cols-3 gap-3 text-slate-600 text-xs">
           <div className="flex flex-col items-center gap-1">
             <span className="text-lg">📊</span>
             <span>完整数据分析</span>
@@ -138,8 +138,8 @@ export default function PayWall({
         </div>
 
         {/* 已售数量 */}
-        <div className="mt-4 text-white/20 text-xs">
-          🔥 今日已有 <span className="text-white/50">{237 + Math.floor(Math.random() * 50)}</span> 人解锁
+        <div className="mt-4 text-slate-500 text-xs">
+          内测阶段：解锁后可立即使用，并支持恢复上次分析
         </div>
       </div>
     </div>
@@ -154,4 +154,3 @@ export function markAsPaid(productId: string): void {
     localStorage.setItem('soul-lab-paid', JSON.stringify(paid))
   } catch {}
 }
-

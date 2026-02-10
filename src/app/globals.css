@@ -17,6 +17,7 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: #0f172a; /* slate-900 */
 }
 
 /* 滚动条美化 */
@@ -27,29 +28,29 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.15);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.25);
 }
 
 /* 全局动画 */
 @layer utilities {
   .text-gradient-soul {
-    @apply bg-gradient-to-r from-pink-500 via-red-500 to-purple-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 bg-clip-text text-transparent;
   }
 
   .text-gradient-fortune {
-    @apply bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent;
   }
 
   .glass-card {
-    @apply backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl;
+    @apply bg-white border border-slate-200 rounded-2xl shadow-sm;
   }
 
   .glass-card-dark {
-    @apply backdrop-blur-xl bg-black/30 border border-white/5 rounded-2xl;
+    @apply bg-slate-50 border border-slate-200 rounded-2xl shadow-sm;
   }
 
   .glow-border {
@@ -72,7 +73,7 @@ body {
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.05) 50%,
+      rgba(15, 23, 42, 0.04) 50%,
       transparent 100%
     );
     background-size: 200% 100%;
@@ -112,10 +113,10 @@ body {
   inset: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.15), transparent),
-    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.1), transparent),
-    radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.12), transparent),
-    radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.08), transparent);
+    radial-gradient(2px 2px at 20px 30px, rgba(15,23,42,0.06), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(15,23,42,0.05), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(15,23,42,0.05), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(15,23,42,0.04), transparent);
   background-size: 200px 100px;
   animation: particle-drift 20s linear infinite;
   z-index: 0;
@@ -158,8 +159,8 @@ body {
 
 /* 分享卡片样式 */
 .share-card {
-  background: linear-gradient(135deg, #0d0b1a 0%, #1a1040 50%, #0d0b1a 100%);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%);
+  border: 1px solid rgba(15,23,42,0.12);
   border-radius: 20px;
   overflow: hidden;
 }
@@ -201,4 +202,3 @@ body {
 .btn-gradient:hover::before {
   opacity: 1;
 }
-

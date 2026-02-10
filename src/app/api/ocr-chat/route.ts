@@ -2,24 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { chatWithImages } from '@/lib/ai'
 
 /**
- * OCR 聊天截图 → 提取纯文本聊天记录
- * 支持微信/QQ等聊天截图
+ * OCR screenshots -> extracted plain chat logs (for later NLP analysis).
+ * Accepts:
+ * - string: data URL (data:image/...;base64,xxx) or raw base64
+ * - object: { base64, mediaType }
  */
 
-const OCR_PROMPT = `你是一个聊天记录提取专家。用户会上传微信/QQ等聊天截图。
+const OCR_PROMPT = `You are a chat-screenshot OCR extractor.
 
-请从截图中精确提取所有聊天内容，按以下格式输出每条消息：
+Output only extracted chat logs. No commentary.
 
-时间 发送者
-消息内容
+Format per message (2 lines):
+YYYY-MM-DD HH:mm:ss Sender
+Message content
 
-规则：
-1. 如果截图中有时间戳，保留原始时间（格式：2024-01-15 14:30:00）
-2. 如果没有时间戳，用递增的假时间（从2024-01-15 08:00:00开始，每条间隔5-30分钟）
-3. 准确识别每条消息的发送者（左边是对方，右边是"我"）
-4. [图片]、[语音]、[表情]等非文字消息用方括号标注
-5. 不要添加任何解释或评论，只输出提取的聊天记录
-6. 如果有多张截图，按时间顺序合并输出`
+Rules:
+1) If timestamp missing/unclear, fabricate increasing timestamps.
+2) Identify sender from UI alignment (left = other, right = me) when possible.
+3) Mark non-text as [image] [voice] [emoji] etc.
+4) Keep system messages if visible.`
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,25 +29,50 @@ export async function POST(req: NextRequest) {
     if (!images || !Array.isArray(images) || images.length === 0) {
       return NextResponse.json({ error: '请上传至少一张聊天截图' }, { status: 400 })
     }
+    if (images.length > 20) {
+      return NextResponse.json({ error: '最多支持20张截图' }, { status: 400 })
+    }
 
-    if (images.length > 10) {
-      return NextResponse.json({ error: '最多支持10张截图' }, { status: 400 })
+    const normalizedImages: string[] = images
+      .map((img: any) => {
+        if (!img) return ''
+        if (typeof img === 'string') {
+          if (img.startsWith('data:')) return img
+          // treat as raw base64
+          return `data:image/jpeg;base64,${img}`
+        }
+        if (typeof img === 'object' && typeof img.base64 === 'string') {
+          const mt = typeof img.mediaType === 'string' && img.mediaType ? img.mediaType : 'image/jpeg'
+          const b64 = img.base64
+          if (b64.startsWith('data:')) return b64
+          return `data:${mt};base64,${b64}`
+        }
+        return ''
+      })
+      .filter(Boolean)
+
+    if (normalizedImages.length === 0) {
+      return NextResponse.json({ error: '截图格式不支持，请重新上传' }, { status: 400 })
+    }
+
+    for (const u of normalizedImages) {
+      if (u.length > 6_000_000) {
+        return NextResponse.json({ error: '单张截图过大，请压缩后再试' }, { status: 413 })
+      }
     }
 
     const chatText = await chatWithImages(
       OCR_PROMPT,
-      `请从这${images.length}张聊天截图中提取所有聊天记录。只输出聊天内容，不要解释。`,
-      images,
+      `Extract chat logs from ${normalizedImages.length} screenshot(s).`,
+      normalizedImages,
       { temperature: 0.1, maxTokens: 4096 }
     )
 
     return NextResponse.json({ chatText })
   } catch (err: any) {
+    const msg = err?.message ? String(err.message) : '截图识别失败，请重试'
     console.error('OCR Error:', err)
-    return NextResponse.json(
-      { error: err.message || '截图识别失败，请重试' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: msg, code: 'OCR_CHAT_FAILED' }, { status: 500 })
   }
 }
 

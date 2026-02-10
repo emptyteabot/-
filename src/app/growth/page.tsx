@@ -48,7 +48,7 @@ export default function GrowthPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setEvents(readGrowthEvents())}
-              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white/80 hover:text-white"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-50"
             >
               刷新
             </button>
@@ -57,11 +57,11 @@ export default function GrowthPage() {
                 clearGrowthEvents()
                 setEvents([])
               }}
-              className="rounded-lg border border-red-400/30 px-3 py-1.5 text-sm text-red-300 hover:text-red-200"
+              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
             >
               清空
             </button>
-            <Link href="/" className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white/80 hover:text-white">
+            <Link href="/" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-50">
               返回首页
             </Link>
           </div>
@@ -69,29 +69,29 @@ export default function GrowthPage() {
 
         <div className="grid gap-3 md:grid-cols-4">
           <div className="glass-card p-4">
-            <div className="text-xs text-white/50">今日访问</div>
+            <div className="text-xs text-slate-600">今日访问</div>
             <div className="mt-1 text-2xl font-bold">{views}</div>
           </div>
           <div className="glass-card p-4">
-            <div className="text-xs text-white/50">开始分析</div>
+            <div className="text-xs text-slate-600">开始分析</div>
             <div className="mt-1 text-2xl font-bold">{starts}</div>
           </div>
           <div className="glass-card p-4">
-            <div className="text-xs text-white/50">完成分析</div>
+            <div className="text-xs text-slate-600">完成分析</div>
             <div className="mt-1 text-2xl font-bold">{dones}</div>
           </div>
           <div className="glass-card p-4">
-            <div className="text-xs text-white/50">完成率</div>
+            <div className="text-xs text-slate-600">完成率</div>
             <div className="mt-1 text-2xl font-bold">{rate}%</div>
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="glass-card p-4">
-            <div className="mb-2 text-sm font-semibold text-white/80">今日热门页面</div>
+            <div className="mb-2 text-sm font-semibold text-slate-800">今日热门页面</div>
             <div className="space-y-2 text-sm">
               {topPages.slice(0, 8).map(([k, v]) => (
-                <div key={k} className="flex justify-between text-white/70">
+                <div key={k} className="flex justify-between text-slate-700">
                   <span>{k}</span>
                   <span>{v}</span>
                 </div>
@@ -99,11 +99,11 @@ export default function GrowthPage() {
             </div>
           </div>
           <div className="glass-card p-4">
-            <div className="mb-2 text-sm font-semibold text-white/80">来源分布（src/utm_source）</div>
+            <div className="mb-2 text-sm font-semibold text-slate-800">来源分布（src/utm_source）</div>
             <div className="space-y-2 text-sm">
-              {topSources.length === 0 && <div className="text-white/50">暂无来源参数数据</div>}
+              {topSources.length === 0 && <div className="text-slate-600">暂无来源参数数据</div>}
               {topSources.slice(0, 8).map(([k, v]) => (
-                <div key={k} className="flex justify-between text-white/70">
+                <div key={k} className="flex justify-between text-slate-700">
                   <span>{k}</span>
                   <span>{v}</span>
                 </div>
@@ -112,12 +112,12 @@ export default function GrowthPage() {
           </div>
         </div>
 
-        <div className="glass-card p-4 text-sm text-white/70">
-          <div className="font-semibold text-white/90">今日执行建议</div>
+        <div className="glass-card p-4 text-sm text-slate-700">
+          <div className="font-semibold text-slate-900">今日执行建议</div>
           <div className="mt-2">1. 访问 &lt; 300: 优先发内容，不优化产品细节。</div>
           <div>2. 开始分析多但完成率低: 优先缩短上传/等待步骤。</div>
           <div>3. 分享点击少: 在结果页多放“转发领权益”按钮。</div>
-          <div className="mt-2 text-xs text-white/50">今日分享点击：{shares}</div>
+          <div className="mt-2 text-xs text-slate-600">今日分享点击：{shares}</div>
         </div>
       </div>
     </div>

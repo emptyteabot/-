@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
@@ -75,19 +75,65 @@ export default function SoulAutopsyPage() {
   const handleScreenshot = (file: File) => {
     setError('')
     if (!file.type.startsWith('image/')) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string
-      setScreenshots(prev => [...prev, base64])
-      setUploadMode('screenshot')
+
+    // Client-side compression to keep uploads small and OCR stable.
+    // For chat screenshots, preserve small text: prefer PNG after downscaling.
+    const compress = async (): Promise<string> => {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(String(r.result || ''))
+        r.onerror = () => reject(new Error('Image read failed'))
+        r.readAsDataURL(file)
+      })
+
+      if (dataUrl.length < 900_000) return dataUrl
+
+      const img: HTMLImageElement = await new Promise((resolve, reject) => {
+        const i = new Image()
+        i.onload = () => resolve(i)
+        i.onerror = () => reject(new Error('Image load failed'))
+        i.src = dataUrl
+      })
+
+      const maxSide = 2048
+      const w = img.naturalWidth || img.width
+      const h = img.naturalHeight || img.height
+      const scale = Math.min(1, maxSide / Math.max(w, h))
+      const cw = Math.max(1, Math.round(w * scale))
+      const ch = Math.max(1, Math.round(h * scale))
+
+      const canvas = document.createElement('canvas')
+      canvas.width = cw
+      canvas.height = ch
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return dataUrl
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(img, 0, 0, cw, ch)
+
+      const png = canvas.toDataURL('image/png')
+      if (png.length < dataUrl.length) return png
+
+      const jpg = canvas.toDataURL('image/jpeg', 0.92)
+      return jpg.length < dataUrl.length ? jpg : dataUrl
     }
-    reader.readAsDataURL(file)
+
+    compress()
+      .then((dataUrl) => {
+        setScreenshots((prev) => [...prev, dataUrl])
+        setUploadMode('screenshot')
+      })
+      .catch((e: any) => setError(e.message || 'Image processing failed'))
   }
 
   const handleMultipleScreenshots = (files: FileList) => {
-    Array.from(files).forEach(file => {
-      if (file.type.startsWith('image/')) handleScreenshot(file)
-    })
+    ;(async () => {
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue
+        handleScreenshot(file)
+        await new Promise((r) => setTimeout(r, 0))
+      }
+    })()
   }
 
   const removeScreenshot = (index: number) => {
@@ -99,26 +145,39 @@ export default function SoulAutopsyPage() {
     setOcrLoading(true)
     setError('')
     try {
-      // 把 data URL 转成 base64 + mediaType 格式
-      const images = screenshots.map(dataUrl => {
-        const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/)
-        return match ? { mediaType: match[1], base64: match[2] } : null
-      }).filter(Boolean)
-
-      const res = await fetch('/api/ocr', {
+      // Prefer chat-specific OCR first. Fallback to generic OCR if needed.
+      let res = await fetch('/api/ocr-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images }),
+        body: JSON.stringify({ images: screenshots }),
       })
+
+      if (!res.ok) {
+        const images = screenshots
+          .map((dataUrl) => {
+            const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/)
+            return match ? { mediaType: match[1], base64: match[2] } : null
+          })
+          .filter(Boolean)
+
+        res = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ images }),
+        })
+      }
+
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.error || '截图识别失败')
+        throw new Error(err.error || 'OCR failed')
       }
+
       const data = await res.json()
-      setFileContent(data.text)
-      setFileName(`${screenshots.length}张聊天截图`)
+      const text = data.chatText || data.text || ''
+      setFileContent(text)
+      setFileName(`${screenshots.length} screenshots`)
       setOcrLoading(false)
-      startAnalysisWithText(data.text)
+      startAnalysisWithText(text)
     } catch (err: any) {
       setOcrLoading(false)
       setError(err.message)

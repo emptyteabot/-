@@ -19,6 +19,7 @@ export interface ChatStats {
   avgMessageLength: Record<string, number>
   longestStreak: number           // 最长连续聊天天数
   responseTime: Record<string, number>  // 平均回复时间(分钟)
+  responseTimeVar: Record<string, number> // 回复延迟方差(分钟^2)
   topWords: Record<string, Record<string, number>>  // 每人高频词
   emojiCount: Record<string, Record<string, number>> // 表情统计
   lateNightRatio: Record<string, number> // 深夜消息比例(23:00-05:00)
@@ -26,6 +27,7 @@ export interface ChatStats {
   lastMessage: ChatMessage | null
   totalDays: number
   initiatorCount: Record<string, number> // 谁先发起聊天次数
+  pronounCount: Record<string, Record<string, number>> // 关键代词统计（我/我们/你...）
 }
 
 /** 解析微信聊天记录文本 */
@@ -118,6 +120,7 @@ export function generateChatStats(messages: ChatMessage[]): ChatStats {
   const emojiFreq: Record<string, Record<string, number>> = {}
   const lateNightCount: Record<string, number> = {}
   const initiatorCount: Record<string, number> = {}
+  const pronounCount: Record<string, Record<string, number>> = {}
 
   senders.forEach(s => {
     messagesBySender[s] = 0
@@ -127,12 +130,30 @@ export function generateChatStats(messages: ChatMessage[]): ChatStats {
     emojiFreq[s] = {}
     lateNightCount[s] = 0
     initiatorCount[s] = 0
+    pronounCount[s] = { '我': 0, '我们': 0, '你': 0, '你们': 0, '他': 0, '她': 0, '咱们': 0 }
   })
 
   // 遍历消息
   let lastDate = ''
-  let lastSender = ''
-  let lastTimestamp = 0
+  let prevSender = ''
+  let prevTs: number | null = null
+  const responseSamples: Record<string, number[]> = {}
+  senders.forEach(s => { responseSamples[s] = [] })
+
+  function parseTs(ts: string): number | null {
+    // Accept: 2024-01-15 14:30:25 or 2024/1/15 14:30
+    const m = ts.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+    if (!m) return null
+    const y = Number(m[1])
+    const mo = Number(m[2])
+    const d = Number(m[3])
+    const h = Number(m[4])
+    const mi = Number(m[5])
+    const s = m[6] ? Number(m[6]) : 0
+    const dt = new Date(y, mo - 1, d, h, mi, s)
+    const t = dt.getTime()
+    return Number.isFinite(t) ? t : null
+  }
 
   for (const msg of messages) {
     const sender = msg.sender
@@ -171,6 +192,14 @@ export function generateChatStats(messages: ChatMessage[]): ChatStats {
       totalLength[sender] = (totalLength[sender] || 0) + msg.content.length
       textCount[sender] = (textCount[sender] || 0) + 1
 
+      // 代词统计（支持单字）
+      const pc = pronounCount[sender] || (pronounCount[sender] = {})
+      const keys = Object.keys(pc)
+      for (const k of keys) {
+        const hit = msg.content.split(k).length - 1
+        if (hit > 0) pc[k] = (pc[k] || 0) + hit
+      }
+
       // 分词统计(简单按长度>=2的连续中文)
       const words = msg.content.match(/[\u4e00-\u9fa5]{2,4}/g) || []
       words.forEach(w => {
@@ -185,7 +214,19 @@ export function generateChatStats(messages: ChatMessage[]): ChatStats {
       })
     }
 
-    lastSender = sender
+    // 回复时间：把“当前消息的发送者”视为对上一条不同发送者消息的响应
+    const curTs = parseTs(msg.timestamp)
+    if (curTs !== null && prevTs !== null && prevSender && sender !== prevSender) {
+      const deltaMin = (curTs - prevTs) / (1000 * 60)
+      // ignore too small or too large gaps (e.g. overnight, long silence)
+      if (deltaMin >= 0.1 && deltaMin <= 12 * 60) {
+        responseSamples[sender].push(deltaMin)
+      }
+    }
+    if (curTs !== null) {
+      prevTs = curTs
+      prevSender = sender
+    }
   }
 
   // 平均消息长度
@@ -211,7 +252,19 @@ export function generateChatStats(messages: ChatMessage[]): ChatStats {
 
   // 回复时间计算(简化版)
   const responseTime: Record<string, number> = {}
-  senders.forEach(s => { responseTime[s] = 0 })
+  const responseTimeVar: Record<string, number> = {}
+  senders.forEach(s => {
+    const arr = responseSamples[s] || []
+    if (arr.length === 0) {
+      responseTime[s] = 0
+      responseTimeVar[s] = 0
+      return
+    }
+    const mean = arr.reduce((a, b) => a + b, 0) / arr.length
+    const varr = arr.reduce((acc, x) => acc + (x - mean) * (x - mean), 0) / arr.length
+    responseTime[s] = Math.round(mean * 10) / 10
+    responseTimeVar[s] = Math.round(varr * 10) / 10
+  })
 
   // 最长连续聊天天数
   const allDates = Array.from(new Set(messages.map(m => {
@@ -242,6 +295,7 @@ export function generateChatStats(messages: ChatMessage[]): ChatStats {
     avgMessageLength,
     longestStreak,
     responseTime,
+    responseTimeVar,
     topWords,
     emojiCount: emojiFreq,
     lateNightRatio,
@@ -249,6 +303,6 @@ export function generateChatStats(messages: ChatMessage[]): ChatStats {
     lastMessage: messages[messages.length - 1] || null,
     totalDays: allDates.length,
     initiatorCount,
+    pronounCount,
   }
 }
-

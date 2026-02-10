@@ -9,24 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // 项目1: 灵魂尸检 - 暗黑系配色
+        // 项目1: 灵魂尸检 - OpenAI / Google light-ish palette
         soul: {
-          bg: '#0a0a0f',
-          card: '#13131a',
-          accent: '#ff3366',
-          glow: '#ff336633',
-          text: '#e0e0e0',
-          muted: '#666680',
+          bg: '#ffffff',
+          card: '#ffffff',
+          accent: '#10a37f',
+          glow: '#10a37f1f',
+          text: '#0f172a',
+          muted: '#475569',
         },
-        // 项目2: AI算命 - 神秘紫金配色
+        // 项目2: AI算命 - Google-ish blue/violet
         fortune: {
-          bg: '#0d0b1a',
-          card: '#1a1530',
-          accent: '#ffd700',
-          purple: '#8b5cf6',
-          glow: '#ffd70033',
-          text: '#f0e6ff',
-          muted: '#6b5b8d',
+          bg: '#ffffff',
+          card: '#ffffff',
+          accent: '#1a73e8',
+          purple: '#6366f1',
+          glow: '#1a73e81a',
+          text: '#0f172a',
+          muted: '#475569',
         },
       },
       fontFamily: {

@@ -34,6 +34,29 @@ const ENV_VARS = {
   AI_FALLBACK_API_KEY: process.env.AI_FALLBACK_API_KEY || dotEnvLocal.AI_FALLBACK_API_KEY || '',
   AI_FALLBACK_BASE_URL: process.env.AI_FALLBACK_BASE_URL || dotEnvLocal.AI_FALLBACK_BASE_URL || '',
   AI_FALLBACK_MODEL: process.env.AI_FALLBACK_MODEL || dotEnvLocal.AI_FALLBACK_MODEL || '',
+
+  // OCR (vision) dedicated config (recommended)
+  AI_OCR_API_KEY: process.env.AI_OCR_API_KEY || dotEnvLocal.AI_OCR_API_KEY || '',
+  AI_OCR_BASE_URL: process.env.AI_OCR_BASE_URL || dotEnvLocal.AI_OCR_BASE_URL || '',
+  AI_OCR_MODEL: process.env.AI_OCR_MODEL || dotEnvLocal.AI_OCR_MODEL || '',
+  AI_OCR_FALLBACK_API_KEY: process.env.AI_OCR_FALLBACK_API_KEY || dotEnvLocal.AI_OCR_FALLBACK_API_KEY || '',
+  AI_OCR_FALLBACK_BASE_URL: process.env.AI_OCR_FALLBACK_BASE_URL || dotEnvLocal.AI_OCR_FALLBACK_BASE_URL || '',
+  AI_OCR_FALLBACK_MODEL: process.env.AI_OCR_FALLBACK_MODEL || dotEnvLocal.AI_OCR_FALLBACK_MODEL || '',
+
+  // Growth mode
+  NEXT_PUBLIC_GROWTH_MODE: process.env.NEXT_PUBLIC_GROWTH_MODE || dotEnvLocal.NEXT_PUBLIC_GROWTH_MODE || '',
+  GROWTH_MODE: process.env.GROWTH_MODE || dotEnvLocal.GROWTH_MODE || '',
+
+  // Paywall/unlock (optional)
+  PAYWALL_SECRET: process.env.PAYWALL_SECRET || dotEnvLocal.PAYWALL_SECRET || '',
+  UNLOCK_CODE_SOUL: process.env.UNLOCK_CODE_SOUL || dotEnvLocal.UNLOCK_CODE_SOUL || '',
+  UNLOCK_CODE_FORTUNE_TAROT: process.env.UNLOCK_CODE_FORTUNE_TAROT || dotEnvLocal.UNLOCK_CODE_FORTUNE_TAROT || '',
+  UNLOCK_CODE_FORTUNE_DAILY: process.env.UNLOCK_CODE_FORTUNE_DAILY || dotEnvLocal.UNLOCK_CODE_FORTUNE_DAILY || '',
+  UNLOCK_CODE_LAUNDERER: process.env.UNLOCK_CODE_LAUNDERER || dotEnvLocal.UNLOCK_CODE_LAUNDERER || '',
+
+  // PostHog (optional)
+  NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY || dotEnvLocal.NEXT_PUBLIC_POSTHOG_KEY || '',
+  NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST || dotEnvLocal.NEXT_PUBLIC_POSTHOG_HOST || '',
 };
 
 const REQUIRED = ['AI_API_KEY', 'AI_BASE_URL', 'AI_MODEL'];
@@ -122,7 +145,7 @@ async function main() {
     });
     if (res.status === 200 || res.status === 201) {
       console.log(`  [OK] ${key}`);
-    } else if (res.data?.error?.code === 'ENV_ALREADY_EXISTS') {
+    } else if (res.data?.error?.code === 'ENV_ALREADY_EXISTS' || res.data?.error?.code === 'ENV_CONFLICT') {
       // Update existing
       const envs = await api('GET', `/v10/projects/${projectId}/env`);
       if (envs.data?.envs) {
