@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { trackGrowthEvent } from '@/lib/growth'
@@ -11,7 +11,7 @@ export default function GrowthModeBanner() {
   return (
     <div className="sticky top-0 z-[60] w-full border-b border-emerald-200 bg-emerald-50/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2 text-xs text-emerald-900 md:text-sm">
-        <span>Growth Mode: 全站免费公测中，先增长后变现。</span>
+        <span>Growth Mode: 全站免费公测中，先验证增长后变现。</span>
         <div className="flex items-center gap-3">
           <Link
             href="/growth"
