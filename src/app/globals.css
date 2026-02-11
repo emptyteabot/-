@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --font-display: 'Noto Serif SC', 'Source Han Serif CN', serif;
-  --font-body: 'Noto Sans SC', 'Source Han Sans CN', -apple-system, sans-serif;
+  --font-display: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Serif CN', serif;
+  --font-body: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans CN', -apple-system, sans-serif;
 }
 
 * {
