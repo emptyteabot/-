@@ -349,6 +349,7 @@ export default function SoulAutopsyPage() {
                 <span className="text-gradient-soul">感情透视报告</span>
               </h1>
               <p className="text-white/40 text-lg">上传你们的聊天记录，AI 帮你看清他的心</p>
+              <div className="mt-3 text-xs text-white/35">预计耗时 30-90 秒，支持手机截图直接上传</div>
               <div className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-sm text-white/50">
                 <span className="w-2 h-2 rounded-full bg-pink-400 animate-pulse" />
                 ✨ 限时免费体验
@@ -437,6 +438,11 @@ export default function SoulAutopsyPage() {
                 <div className="mt-4 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300/80 text-xs text-center">
                   💡 直接手机截图微信聊天界面，多截几张效果更好
                 </div>
+                <div className="mt-3 grid gap-2 text-xs text-white/45 sm:grid-cols-3">
+                  <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">建议 3-8 张连续对话</div>
+                  <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">尽量包含时间与双方气泡</div>
+                  <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">上传原图，避免转发压缩</div>
+                </div>
               </>
             ) : (
               <>
@@ -503,10 +509,15 @@ export default function SoulAutopsyPage() {
             )}
 
             <button
-              onClick={() => { setFileName('示例聊天记录.txt'); setFileContent(DEMO_CHAT) }}
+              onClick={() => {
+                trackGrowthEvent({ name: 'cta_click', page: '/soul-autopsy', detail: 'demo_quick_start' })
+                setFileName('示例聊天记录.txt')
+                setFileContent(DEMO_CHAT)
+                startAnalysisWithText(DEMO_CHAT, 12)
+              }}
               className="mt-4 w-full py-3 rounded-xl border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all text-sm"
             >
-              🎮 没有聊天记录？用示例体验一下
+              ⚡ 10 秒看示例报告（免上传）
             </button>
           </div>
         )}

@@ -2,6 +2,23 @@ import OpenAI from 'openai'
 
 type ChatOptions = { temperature?: number; maxTokens?: number }
 
+function toMs(v: string | undefined, fallback: number) {
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+async function withTimeout<T>(p: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout ${timeoutMs}ms`)), timeoutMs)
+  })
+  try {
+    return await Promise.race([p, timeoutPromise])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 function makeClient(apiKey?: string, baseURL?: string) {
   if (!apiKey || !baseURL) return null
   return new OpenAI({ apiKey, baseURL })
@@ -57,16 +74,19 @@ export async function chatCompletion(systemPrompt: string, userMessage: string, 
   for (const t of tries) {
     if (!t.client) continue
     try {
-      const response = await t.client.chat.completions.create({
-        model: t.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-        temperature: options?.temperature ?? 0.8,
-        max_tokens: options?.maxTokens ?? 4096,
-      })
-
+      const response = await withTimeout(
+        t.client.chat.completions.create({
+          model: t.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage },
+          ],
+          temperature: options?.temperature ?? 0.8,
+          max_tokens: options?.maxTokens ?? 4096,
+        }),
+        toMs(process.env.AI_TIMEOUT_MS, 45000),
+        `${t.label}(${t.model})`
+      )
       const content = response.choices[0]?.message?.content
       if (content) return content
       errors.push(`${t.label}(${t.model}): empty-content`)
@@ -107,8 +127,8 @@ export async function chatWithImages(
   if (alias && p.client) {
     tries.push({ ...p, model: alias, label: `${p.label}_latest` })
   }
-  // If OCR model is unstable for a given image, a generic VL fallback can rescue.
-  if (p.client) {
+  // Qwen OCR models can occasionally fail on specific images, so add a stronger Qwen fallback.
+  if (p.client && /^qwen-vl/i.test(p.model)) {
     tries.push({ ...p, model: 'qwen-vl-plus-latest', label: `${p.label}_vlplus` })
   }
   tries.push(f)
@@ -117,12 +137,16 @@ export async function chatWithImages(
   for (const t of tries) {
     if (!t.client) continue
     try {
-      const response = await t.client.chat.completions.create({
-        model: t.model,
-        messages,
-        temperature: options?.temperature ?? 0.2,
-        max_tokens: options?.maxTokens ?? 4096,
-      })
+      const response = await withTimeout(
+        t.client.chat.completions.create({
+          model: t.model,
+          messages,
+          temperature: options?.temperature ?? 0.2,
+          max_tokens: options?.maxTokens ?? 4096,
+        }),
+        toMs(process.env.AI_OCR_TIMEOUT_MS, 30000),
+        `${t.label}(${t.model})`
+      )
       const result = response.choices[0]?.message?.content
       if (result && result.trim()) return result
       errors.push(`${t.label}(${t.model}): empty-content`)
