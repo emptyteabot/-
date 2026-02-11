@@ -1,6 +1,10 @@
 import OpenAI from 'openai'
 
-type ChatOptions = { temperature?: number; maxTokens?: number }
+type ChatOptions = {
+  temperature?: number
+  maxTokens?: number
+  preferFast?: boolean
+}
 
 function toMs(v: string | undefined, fallback: number) {
   const n = Number(v)
@@ -82,23 +86,33 @@ function ocrLatestAlias(model: string): string | null {
 export async function chatCompletion(systemPrompt: string, userMessage: string, options?: ChatOptions): Promise<string> {
   const p = primary()
   const f = fallback()
-  const tries = [p]
-  if (p.client && isReasoningModel(p.model)) {
-    tries.push({
-      ...p,
-      model: fastModelFor(p.model),
-      label: `${p.label}_fast`,
-    })
-  }
-  tries.push(f)
+  const pFast = p.client
+    ? {
+        ...p,
+        model: fastModelFor(p.model),
+        label: `${p.label}_fast`,
+      }
+    : null
+  const preferFast = Boolean(options?.preferFast)
+  const tries = preferFast
+    ? [pFast, f, p].filter(Boolean) as Array<{ client: OpenAI | null; model: string; label: string }>
+    : [p, pFast, f].filter(Boolean) as Array<{ client: OpenAI | null; model: string; label: string }>
+
+  const maxTries = toMs(process.env.AI_MAX_TRIES, 2)
+  const totalBudgetMs = toMs(process.env.AI_TOTAL_TIMEOUT_MS, 38000)
+  const startedAt = Date.now()
   const errors: string[] = []
 
-  for (const t of tries) {
+  for (const t of tries.slice(0, maxTries)) {
+    if (Date.now() - startedAt > totalBudgetMs) {
+      errors.push(`total-timeout(${totalBudgetMs}ms)`)
+      break
+    }
     if (!t.client) continue
     try {
       const timeoutMs = toMs(
         process.env.AI_TIMEOUT_MS,
-        isReasoningModel(t.model) ? 25000 : 45000
+        isReasoningModel(t.model) ? 18000 : 20000
       )
       const response = await withTimeout(
         t.client.chat.completions.create({

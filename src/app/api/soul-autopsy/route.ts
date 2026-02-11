@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.7,
       // Keep response bounded to avoid timeout on slower providers/models.
       maxTokens: paid ? 2200 : 1000,
+      preferFast: true,
     })
 
     return NextResponse.json({
