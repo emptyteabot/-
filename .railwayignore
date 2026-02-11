@@ -1,0 +1,15 @@
+.git
+.next
+node_modules
+.vercel
+.wrangler
+.open-next
+MediaCrawler
+MoneyPrinterTurbo
+tools/logs
+*.log
+*.tmp
+tmp
+temp
+processed_images
+
