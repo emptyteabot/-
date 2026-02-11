@@ -43,6 +43,13 @@ function ocrFallback() {
   }
 }
 
+function ocrLatestAlias(model: string): string | null {
+  if (!model || /-latest$/i.test(model)) return null
+  if (/^qwen-vl-ocr/i.test(model)) return 'qwen-vl-ocr-latest'
+  if (/^qwen-vl-plus/i.test(model)) return 'qwen-vl-plus-latest'
+  return null
+}
+
 export async function chatCompletion(systemPrompt: string, userMessage: string, options?: ChatOptions): Promise<string> {
   const tries = [primary(), fallback()]
   const errors: string[] = []
@@ -93,7 +100,18 @@ export async function chatWithImages(
     { role: 'user' as const, content },
   ]
 
-  const tries = [ocrPrimary(), ocrFallback()]
+  const p = ocrPrimary()
+  const f = ocrFallback()
+  const tries = [p]
+  const alias = ocrLatestAlias(p.model)
+  if (alias && p.client) {
+    tries.push({ ...p, model: alias, label: `${p.label}_latest` })
+  }
+  // If OCR model is unstable for a given image, a generic VL fallback can rescue.
+  if (p.client) {
+    tries.push({ ...p, model: 'qwen-vl-plus-latest', label: `${p.label}_vlplus` })
+  }
+  tries.push(f)
   const errors: string[] = []
 
   for (const t of tries) {
@@ -157,4 +175,3 @@ export async function* chatCompletionStream(
 
   throw new Error('AI 流式服务暂时不可用，请稍后重试。')
 }
-

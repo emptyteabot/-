@@ -75,6 +75,7 @@ export default function SoulAutopsyPage() {
   const handleScreenshot = (file: File) => {
     setError('')
     if (!file.type.startsWith('image/')) return
+    trackGrowthEvent({ name: 'upload_add', page: '/soul-autopsy', detail: file.type || 'image' })
 
     // Client-side compression to keep uploads small and OCR stable.
     // For chat screenshots, preserve small text: prefer PNG after downscaling.
@@ -96,9 +97,12 @@ export default function SoulAutopsyPage() {
       })
 
       const maxSide = 2048
+      const minSide = 32
       const w = img.naturalWidth || img.width
       const h = img.naturalHeight || img.height
-      const scale = Math.min(1, maxSide / Math.max(w, h))
+      const shrink = Math.min(1, maxSide / Math.max(w, h))
+      const enlarge = Math.max(1, minSide / Math.min(w, h))
+      const scale = Math.max(shrink, enlarge)
       const cw = Math.max(1, Math.round(w * scale))
       const ch = Math.max(1, Math.round(h * scale))
 
@@ -144,6 +148,7 @@ export default function SoulAutopsyPage() {
     if (screenshots.length === 0) return
     setOcrLoading(true)
     setError('')
+    trackGrowthEvent({ name: 'ocr_start', page: '/soul-autopsy', detail: `${screenshots.length}` })
     try {
       // Prefer chat-specific OCR first. Fallback to generic OCR if needed.
       let res = await fetch('/api/ocr-chat', {
@@ -155,7 +160,7 @@ export default function SoulAutopsyPage() {
       if (!res.ok) {
         const images = screenshots
           .map((dataUrl) => {
-            const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/)
+            const match = dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/)
             return match ? { mediaType: match[1], base64: match[2] } : null
           })
           .filter(Boolean)
@@ -173,14 +178,40 @@ export default function SoulAutopsyPage() {
       }
 
       const data = await res.json()
-      const text = data.chatText || data.text || ''
+      let text = String(data.chatText || data.text || '')
+      // Guard against "successful but empty" OCR output.
+      if (text.trim().length < 12) {
+        const images = screenshots
+          .map((dataUrl) => {
+            const match = dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/)
+            return match ? { mediaType: match[1], base64: match[2] } : null
+          })
+          .filter(Boolean)
+        const fallback = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ images }),
+        })
+        if (fallback.ok) {
+          const fd = await fallback.json()
+          text = String(fd.text || '')
+        }
+      }
+
+      if (text.trim().length < 12) {
+        throw new Error('未识别到有效文字。请上传更清晰聊天截图（原图、非缩略图、至少3张连续对话）。')
+      }
+
       setFileContent(text)
       setFileName(`${screenshots.length} screenshots`)
+      trackGrowthEvent({ name: 'ocr_done', page: '/soul-autopsy', detail: `${text.length}` })
       setOcrLoading(false)
       startAnalysisWithText(text)
     } catch (err: any) {
       setOcrLoading(false)
-      setError(err.message)
+      const msg = err?.message || 'OCR failed'
+      trackGrowthEvent({ name: 'ocr_fail', page: '/soul-autopsy', detail: msg })
+      setError(msg)
     }
   }
 
@@ -237,7 +268,9 @@ export default function SoulAutopsyPage() {
       }, 1000)
     } catch (err: any) {
       clearInterval(progressInterval)
-      setError(err.message || '分析失败，请重试')
+      const msg = err?.message || '分析失败，请重试'
+      trackGrowthEvent({ name: 'analysis_fail', page: '/soul-autopsy', detail: msg })
+      setError(msg)
       setStage('upload')
     }
   }

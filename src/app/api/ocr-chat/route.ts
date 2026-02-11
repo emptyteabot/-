@@ -68,6 +68,11 @@ export async function POST(req: NextRequest) {
       { temperature: 0.1, maxTokens: 4096 }
     )
 
+    // Treat near-empty output as OCR failure so frontend can fallback to generic OCR route.
+    if (!chatText || chatText.trim().length < 12) {
+      return NextResponse.json({ error: '未识别到足够聊天文本' }, { status: 422 })
+    }
+
     return NextResponse.json({ chatText })
   } catch (err: any) {
     const msg = err?.message ? String(err.message) : '截图识别失败，请重试'
@@ -75,4 +80,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg, code: 'OCR_CHAT_FAILED' }, { status: 500 })
   }
 }
-
