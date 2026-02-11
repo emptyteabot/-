@@ -41,6 +41,16 @@ export default function SoulAutopsyPage() {
     '报告已生成 💜',
   ]
 
+  async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 90000) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await fetch(input, { ...init, signal: controller.signal })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
   const handleFile = useCallback((file: File) => {
     setError('')
     if (!file.name.match(/\.(txt|csv|text)$/i)) {
@@ -148,14 +158,35 @@ export default function SoulAutopsyPage() {
     if (screenshots.length === 0) return
     setOcrLoading(true)
     setError('')
+    setStage('analyzing')
+    setProgress(3)
+    setProgressText('正在上传截图...')
     trackGrowthEvent({ name: 'ocr_start', page: '/soul-autopsy', detail: `${screenshots.length}` })
+    let ocrProgressInterval: ReturnType<typeof setInterval> | null = null
     try {
+      const ocrSteps = [
+        '正在上传截图...',
+        '正在识别聊天气泡...',
+        '正在提取时间与发送人...',
+        '正在拼接连续对话...',
+        'OCR 即将完成...',
+      ]
+      ocrProgressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 48) return 48
+          const p = prev + Math.random() * 2 + 1
+          const idx = Math.min(ocrSteps.length - 1, Math.floor(p / 10))
+          setProgressText(ocrSteps[idx])
+          return p
+        })
+      }, 900)
+
       // Prefer chat-specific OCR first. Fallback to generic OCR if needed.
-      let res = await fetch('/api/ocr-chat', {
+      let res = await fetchWithTimeout('/api/ocr-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ images: screenshots }),
-      })
+      }, 45000)
 
       if (!res.ok) {
         const images = screenshots
@@ -165,11 +196,11 @@ export default function SoulAutopsyPage() {
           })
           .filter(Boolean)
 
-        res = await fetch('/api/ocr', {
+        res = await fetchWithTimeout('/api/ocr', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ images }),
-        })
+        }, 30000)
       }
 
       if (!res.ok) {
@@ -187,11 +218,11 @@ export default function SoulAutopsyPage() {
             return match ? { mediaType: match[1], base64: match[2] } : null
           })
           .filter(Boolean)
-        const fallback = await fetch('/api/ocr', {
+        const fallback = await fetchWithTimeout('/api/ocr', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ images }),
-        })
+        }, 30000)
         if (fallback.ok) {
           const fd = await fallback.json()
           text = String(fd.text || '')
@@ -202,14 +233,25 @@ export default function SoulAutopsyPage() {
         throw new Error('未识别到有效文字。请上传更清晰聊天截图（原图、非缩略图、至少3张连续对话）。')
       }
 
+      if (ocrProgressInterval) {
+        clearInterval(ocrProgressInterval)
+      }
+      setProgress(52)
+      setProgressText('OCR 完成，开始深度关系分析...')
       setFileContent(text)
       setFileName(`${screenshots.length} screenshots`)
       trackGrowthEvent({ name: 'ocr_done', page: '/soul-autopsy', detail: `${text.length}` })
       setOcrLoading(false)
-      startAnalysisWithText(text)
+      startAnalysisWithText(text, 52)
     } catch (err: any) {
+      if (ocrProgressInterval) {
+        clearInterval(ocrProgressInterval)
+      }
       setOcrLoading(false)
-      const msg = err?.message || 'OCR failed'
+      setStage('upload')
+      const msg = err?.name === 'AbortError'
+        ? 'OCR 超时了（截图较多或网络较慢）。建议减少单次截图数量后重试。'
+        : (err?.message || 'OCR failed')
       trackGrowthEvent({ name: 'ocr_fail', page: '/soul-autopsy', detail: msg })
       setError(msg)
     }
@@ -224,14 +266,14 @@ export default function SoulAutopsyPage() {
     startAnalysisWithText(fileContent)
   }
 
-  const startAnalysisWithText = async (text: string) => {
+  const startAnalysisWithText = async (text: string, startProgress = 0) => {
     trackGrowthEvent({ name: 'analysis_start', page: '/soul-autopsy', detail: uploadMode })
     setStage('analyzing')
-    setProgress(0)
+    setProgress(startProgress)
 
     const progressInterval = setInterval(() => {
       setProgress(prev => {
-        const step = Math.floor(prev / 10)
+        const step = Math.floor((prev - startProgress) / 5)
         if (step < progressSteps.length) {
           setProgressText(progressSteps[step])
         }
@@ -244,11 +286,11 @@ export default function SoulAutopsyPage() {
     }, 800)
 
     try {
-      const res = await fetch('/api/soul-autopsy', {
+      const res = await fetchWithTimeout('/api/soul-autopsy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatText: text }),
-      })
+      }, 90000)
 
       clearInterval(progressInterval)
 
@@ -269,8 +311,11 @@ export default function SoulAutopsyPage() {
     } catch (err: any) {
       clearInterval(progressInterval)
       const msg = err?.message || '分析失败，请重试'
-      trackGrowthEvent({ name: 'analysis_fail', page: '/soul-autopsy', detail: msg })
-      setError(msg)
+      const friendly = err?.name === 'AbortError'
+        ? '分析超时了（文本较长或模型繁忙），请稍后重试。'
+        : msg
+      trackGrowthEvent({ name: 'analysis_fail', page: '/soul-autopsy', detail: friendly })
+      setError(friendly)
       setStage('upload')
     }
   }
