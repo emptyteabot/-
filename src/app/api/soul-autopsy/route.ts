@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseWechatChat, generateChatStats } from '@/lib/chat-parser'
 import { chatCompletion } from '@/lib/ai'
-import { FORTUNE_PROMPTS } from '@/lib/fortune-engine'
 import { growthModeEnabled, isPaid } from '@/lib/paywall'
 
 async function withApiTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -31,7 +30,16 @@ export async function POST(req: NextRequest) {
     const stats = generateChatStats(messages)
 
     // 3. 调用 AI 生成报告
-    const prompt = FORTUNE_PROMPTS.soulAutopsy(stats)
+    const prompt = [
+      '你是冷静直接的情感分析师。',
+      '根据聊天统计给出结构化结论，不要空话。',
+      '输出 Markdown，严格包含以下小节：',
+      '## 关系诊断',
+      '## 关键证据',
+      '## 风险信号',
+      '## 行动建议（3条）',
+      '语气：清晰、克制、可执行。',
+    ].join('\n')
 
     const paid = growthModeEnabled() || (await isPaid('soul'))
     const userMessage = paid
