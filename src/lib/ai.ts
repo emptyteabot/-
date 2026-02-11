@@ -40,6 +40,18 @@ function fallback() {
   }
 }
 
+function isReasoningModel(model: string): boolean {
+  const m = (model || '').toLowerCase()
+  return m.includes('reasoner') || m.includes('r1')
+}
+
+function fastModelFor(model: string): string {
+  // User can override with AI_FAST_MODEL (recommended: deepseek-chat / claude-sonnet / gpt-4o-mini class)
+  if (process.env.AI_FAST_MODEL) return process.env.AI_FAST_MODEL
+  if (model.toLowerCase().includes('deepseek')) return 'deepseek-chat'
+  return model
+}
+
 // OCR should use a vision-capable provider/model. If unset, we reuse primary/fallback.
 function ocrPrimary() {
   return {
@@ -68,12 +80,26 @@ function ocrLatestAlias(model: string): string | null {
 }
 
 export async function chatCompletion(systemPrompt: string, userMessage: string, options?: ChatOptions): Promise<string> {
-  const tries = [primary(), fallback()]
+  const p = primary()
+  const f = fallback()
+  const tries = [p]
+  if (p.client && isReasoningModel(p.model)) {
+    tries.push({
+      ...p,
+      model: fastModelFor(p.model),
+      label: `${p.label}_fast`,
+    })
+  }
+  tries.push(f)
   const errors: string[] = []
 
   for (const t of tries) {
     if (!t.client) continue
     try {
+      const timeoutMs = toMs(
+        process.env.AI_TIMEOUT_MS,
+        isReasoningModel(t.model) ? 25000 : 45000
+      )
       const response = await withTimeout(
         t.client.chat.completions.create({
           model: t.model,
@@ -84,7 +110,7 @@ export async function chatCompletion(systemPrompt: string, userMessage: string, 
           temperature: options?.temperature ?? 0.8,
           max_tokens: options?.maxTokens ?? 4096,
         }),
-        toMs(process.env.AI_TIMEOUT_MS, 45000),
+        timeoutMs,
         `${t.label}(${t.model})`
       )
       const content = response.choices[0]?.message?.content
