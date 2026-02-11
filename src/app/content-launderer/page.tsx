@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 type TabType = 'examples' | 'rewrite' | 'generate' | 'titles'
 type Platform = 'xiaohongshu' | 'douyin' | 'wechat' | 'weibo'
@@ -279,7 +280,7 @@ export default function ContentLaundererPage() {
             <span className="font-bold text-gray-800">内容工厂</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">内部工具</span>
           </div>
-          <a href="/" className="text-gray-400 text-sm hover:text-gray-600">← 回主站</a>
+          <Link href="/" className="text-gray-400 text-sm hover:text-gray-600">← 回主站</Link>
         </div>
       </header>
 

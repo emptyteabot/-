@@ -20,13 +20,13 @@ export default function GrowthModeBanner() {
           >
             看增长数据
           </Link>
-          <a
+          <Link
             href="/?src=invite"
             onClick={() => trackGrowthEvent({ name: 'invite_click', page: '/_global', detail: 'copy_invite_link' })}
             className="rounded-md bg-emerald-600 px-2 py-1 text-white hover:bg-emerald-700"
           >
             邀请链接
-          </a>
+          </Link>
         </div>
       </div>
     </div>
