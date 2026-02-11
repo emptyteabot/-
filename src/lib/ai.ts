@@ -114,6 +114,8 @@ export async function chatCompletion(systemPrompt: string, userMessage: string, 
         process.env.AI_TIMEOUT_MS,
         isReasoningModel(t.model) ? 18000 : 20000
       )
+      const timeoutCapMs = toMs(process.env.AI_TIMEOUT_CAP_MS, 22000)
+      const boundedTimeoutMs = Math.min(timeoutMs, timeoutCapMs)
       const response = await withTimeout(
         t.client.chat.completions.create({
           model: t.model,
@@ -124,7 +126,7 @@ export async function chatCompletion(systemPrompt: string, userMessage: string, 
           temperature: options?.temperature ?? 0.8,
           max_tokens: options?.maxTokens ?? 4096,
         }),
-        timeoutMs,
+        boundedTimeoutMs,
         `${t.label}(${t.model})`
       )
       const content = response.choices[0]?.message?.content
