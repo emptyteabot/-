@@ -160,82 +160,82 @@ export default function SoulAutopsyPage() {
     setError('')
     setStage('analyzing')
     setProgress(3)
-    setProgressText('正在上传截图...')
+    setProgressText('正在准备分批识别...')
     trackGrowthEvent({ name: 'ocr_start', page: '/soul-autopsy', detail: `${screenshots.length}` })
-    let ocrProgressInterval: ReturnType<typeof setInterval> | null = null
     try {
-      const ocrSteps = [
-        '正在上传截图...',
-        '正在识别聊天气泡...',
-        '正在提取时间与发送人...',
-        '正在拼接连续对话...',
-        'OCR 即将完成...',
-      ]
-      ocrProgressInterval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 48) return 48
-          const p = prev + Math.random() * 2 + 1
-          const idx = Math.min(ocrSteps.length - 1, Math.floor(p / 10))
-          setProgressText(ocrSteps[idx])
-          return p
-        })
-      }, 900)
+      const batchSize = 2
+      const batches: string[][] = []
+      for (let i = 0; i < screenshots.length; i += batchSize) {
+        batches.push(screenshots.slice(i, i + batchSize))
+      }
+      const batchCount = batches.length
 
-      // Prefer chat-specific OCR first. Fallback to generic OCR if needed.
-      let res = await fetchWithTimeout('/api/ocr-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images: screenshots }),
-      }, 45000)
-
-      if (!res.ok) {
-        const images = screenshots
+      const toOcrImages = (items: string[]) =>
+        items
           .map((dataUrl) => {
             const match = dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/)
             return match ? { mediaType: match[1], base64: match[2] } : null
           })
           .filter(Boolean)
 
-        res = await fetchWithTimeout('/api/ocr', {
+      const ocrOneBatch = async (items: string[]) => {
+        let res = await fetchWithTimeout('/api/ocr-chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ images }),
+          body: JSON.stringify({ images: items }),
         }, 30000)
-      }
 
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'OCR failed')
-      }
+        if (!res.ok) {
+          const images = toOcrImages(items)
+          res = await fetchWithTimeout('/api/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ images }),
+          }, 25000)
+        }
 
-      const data = await res.json()
-      let text = String(data.chatText || data.text || '')
-      // Guard against "successful but empty" OCR output.
-      if (text.trim().length < 12) {
-        const images = screenshots
-          .map((dataUrl) => {
-            const match = dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/)
-            return match ? { mediaType: match[1], base64: match[2] } : null
-          })
-          .filter(Boolean)
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error || 'OCR failed')
+        }
+
+        const data = await res.json()
+        let text = String(data.chatText || data.text || '').trim()
+        if (text.length >= 12) return text
+
+        const images = toOcrImages(items)
         const fallback = await fetchWithTimeout('/api/ocr', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ images }),
-        }, 30000)
-        if (fallback.ok) {
-          const fd = await fallback.json()
-          text = String(fd.text || '')
+        }, 25000)
+        if (!fallback.ok) return text
+        const fd = await fallback.json().catch(() => ({}))
+        return String(fd.text || '').trim()
+      }
+
+      const texts: string[] = []
+      for (let i = 0; i < batchCount; i++) {
+        const batch = batches[i]
+        setProgressText(`正在识别第 ${i + 1}/${batchCount} 批截图...`)
+        setProgress(6 + Math.round((i / batchCount) * 40))
+
+        try {
+          const chunkText = await ocrOneBatch(batch)
+          if (chunkText.length >= 8) {
+            texts.push(chunkText)
+          }
+        } catch (e: any) {
+          trackGrowthEvent({ name: 'ocr_fail', page: '/soul-autopsy', detail: `#${i + 1}: ${String(e?.message || 'error')}` })
+          throw e
         }
       }
 
+      const text = texts.join('\n')
       if (text.trim().length < 12) {
         throw new Error('未识别到有效文字。请上传更清晰聊天截图（原图、非缩略图、至少3张连续对话）。')
       }
 
-      if (ocrProgressInterval) {
-        clearInterval(ocrProgressInterval)
-      }
       setProgress(52)
       setProgressText('OCR 完成，开始深度关系分析...')
       setFileContent(text)
@@ -244,13 +244,10 @@ export default function SoulAutopsyPage() {
       setOcrLoading(false)
       startAnalysisWithText(text, 52)
     } catch (err: any) {
-      if (ocrProgressInterval) {
-        clearInterval(ocrProgressInterval)
-      }
       setOcrLoading(false)
       setStage('upload')
       const msg = err?.name === 'AbortError'
-        ? 'OCR 超时了（截图较多或网络较慢）。建议减少单次截图数量后重试。'
+        ? 'OCR 超时了（截图较多或网络较慢）。系统已自动分批识别，建议改传更清晰原图后重试。'
         : (err?.message || 'OCR failed')
       trackGrowthEvent({ name: 'ocr_fail', page: '/soul-autopsy', detail: msg })
       setError(msg)
