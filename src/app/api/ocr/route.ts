@@ -1,18 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { chatWithImages } from '@/lib/ai'
 
 type ImgObj = { base64: string; mediaType?: string }
 
-const OCR_SYSTEM = `You are an OCR extraction engine. Extract the chat messages from screenshots precisely.
+const OCR_SYSTEM = `You are an OCR engine.
 
-Rules:
-1) Output only extracted chat logs, no commentary.
-2) Each message uses 2 lines:
-   YYYY-MM-DD HH:mm:ss Sender
-   Message content
-3) If timestamp is missing/unclear, fabricate a reasonable increasing timestamp.
-4) Mark non-text messages as [image] [voice] [emoji] etc.
-5) Keep system messages (recall/red packet) if visible.`
+Output ONLY visible text from image(s). No explanation.
+Keep line breaks.`
+
+function cleanOcrText(input: string): string {
+  return (input || '')
+    .replace(/```[a-zA-Z]*\n?/g, '')
+    .replace(/```/g, '')
+    .replace(/\r/g, '')
+    .trim()
+}
+
+function looksLikeRefusal(input: string): boolean {
+  const t = (input || '').toLowerCase()
+  const keys = ['无法', '不能', '抱歉', "i can't", 'cannot', 'policy', '不支持']
+  return keys.some((k) => t.includes(k))
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +34,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '最多支持20张截图' }, { status: 400 })
     }
 
-    // Basic payload safety: reject extremely large base64 inputs.
     for (const img of images) {
       if (!img?.base64 || typeof img.base64 !== 'string') continue
       if (img.base64.length > 6_000_000) {
@@ -35,7 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     const normalized: string[] = images
-      .map(img => {
+      .map((img) => {
         const mt = img?.mediaType && typeof img.mediaType === 'string' ? img.mediaType : 'image/jpeg'
         const b64 = img?.base64
         if (!b64 || typeof b64 !== 'string') return ''
@@ -48,19 +55,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '截图格式不支持，请重新上传' }, { status: 400 })
     }
 
-    const text = await chatWithImages(
+    const raw = await chatWithImages(
       OCR_SYSTEM,
-      `Extract chat logs from ${normalized.length} screenshot(s).`,
+      `Extract readable text from ${normalized.length} screenshot(s).`,
       normalized,
       { temperature: 0.1, maxTokens: 4096 }
     )
+
+    const text = cleanOcrText(raw)
+    if (!text || text.length < 8 || looksLikeRefusal(text)) {
+      return NextResponse.json({ error: '未识别到有效文字' }, { status: 422 })
+    }
 
     return NextResponse.json({ text })
   } catch (err: any) {
     const msg = err?.message ? String(err.message) : '截图识别失败，请重试'
     console.error('OCR Error:', err)
-    // Return the message to frontend (already sanitized; no secrets).
     return NextResponse.json({ error: msg, code: 'OCR_FAILED' }, { status: 500 })
   }
 }
-

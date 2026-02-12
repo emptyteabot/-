@@ -1,26 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { chatWithImages } from '@/lib/ai'
 
 /**
- * OCR screenshots -> extracted plain chat logs (for later NLP analysis).
+ * OCR screenshots -> extracted plain chat text.
  * Accepts:
- * - string: data URL (data:image/...;base64,xxx) or raw base64
+ * - string: data URL or raw base64
  * - object: { base64, mediaType }
  */
 
-const OCR_PROMPT = `You are a chat-screenshot OCR extractor.
+const OCR_PROMPT = `You are an OCR engine for chat screenshots.
 
-Output only extracted chat logs. No commentary.
-
-Format per message (2 lines):
-YYYY-MM-DD HH:mm:ss Sender
-Message content
+Output ONLY visible text from images.
+Do not explain. Do not refuse. Do not add policy text.
 
 Rules:
-1) If timestamp missing/unclear, fabricate increasing timestamps.
-2) Identify sender from UI alignment (left = other, right = me) when possible.
-3) Mark non-text as [image] [voice] [emoji] etc.
-4) Keep system messages if visible.`
+1) Preserve line breaks in reading order.
+2) If speaker can be inferred, prefix lines as:\n我: ...\n对方: ...
+3) Keep timestamps/system hints if visible.
+4) If partially unreadable, still output readable text.`
+
+function cleanOcrText(input: string): string {
+  return (input || '')
+    .replace(/```[a-zA-Z]*\n?/g, '')
+    .replace(/```/g, '')
+    .replace(/\r/g, '')
+    .trim()
+}
+
+function looksLikeRefusal(input: string): boolean {
+  const t = (input || '').toLowerCase()
+  const keys = ['无法', '不能', '抱歉', "i can't", 'cannot', 'policy', '不支持']
+  return keys.some((k) => t.includes(k))
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,7 +49,6 @@ export async function POST(req: NextRequest) {
         if (!img) return ''
         if (typeof img === 'string') {
           if (img.startsWith('data:')) return img
-          // treat as raw base64
           return `data:image/jpeg;base64,${img}`
         }
         if (typeof img === 'object' && typeof img.base64 === 'string') {
@@ -61,16 +71,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const chatText = await chatWithImages(
+    const raw = await chatWithImages(
       OCR_PROMPT,
-      `Extract chat logs from ${normalizedImages.length} screenshot(s).`,
+      `Extract visible chat text from ${normalizedImages.length} screenshot(s).`,
       normalizedImages,
       { temperature: 0.1, maxTokens: 4096 }
     )
 
-    // Treat near-empty output as OCR failure so frontend can fallback to generic OCR route.
-    if (!chatText || chatText.trim().length < 12) {
-      return NextResponse.json({ error: '未识别到足够聊天文本' }, { status: 422 })
+    const chatText = cleanOcrText(raw)
+
+    if (!chatText || chatText.length < 12 || looksLikeRefusal(chatText)) {
+      return NextResponse.json({ error: '未识别到有效聊天文字' }, { status: 422 })
     }
 
     return NextResponse.json({ chatText })
