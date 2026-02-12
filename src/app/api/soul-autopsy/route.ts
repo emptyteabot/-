@@ -25,6 +25,12 @@ export async function POST(req: NextRequest) {
 
     // 1. 解析聊天记录
     const messages = parseWechatChat(chatText)
+    if (!messages.length) {
+      return NextResponse.json(
+        { error: '未识别到有效聊天消息。请上传更清晰的连续聊天截图（建议3-8张原图）。' },
+        { status: 422 }
+      )
+    }
 
     // 2. 生成统计数据
     const stats = generateChatStats(messages)

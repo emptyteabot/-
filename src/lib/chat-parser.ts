@@ -90,6 +90,67 @@ export function parseWechatChat(text: string): ChatMessage[] {
   }
   pushMessage()
 
+  // Fallback for screenshot OCR text without strict timestamp/sender headers.
+  if (messages.length === 0) {
+    return parseUnstructuredChatFallback(text)
+  }
+
+  return messages
+}
+
+function parseUnstructuredChatFallback(text: string): ChatMessage[] {
+  const raw = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+
+  const lines = raw.filter((l) => {
+    // Remove typical UI noise from screenshot OCR.
+    if (/^(微信|聊天信息|返回|更多|发送|按住说话|输入消息|语音输入)$/i.test(l)) return false
+    if (/^[\[\(]?(昨天|今天|前天|星期[一二三四五六日天]|周[一二三四五六日天])[\]\)]?$/i.test(l)) return false
+    return true
+  })
+
+  const messages: ChatMessage[] = []
+  const base = new Date()
+  base.setHours(12, 0, 0, 0)
+  let idx = 0
+  let nextIsMe = false
+
+  for (const line of lines) {
+    if (line.length < 1) continue
+    if (/^\d{1,2}:\d{2}$/.test(line)) continue
+
+    let sender = nextIsMe ? '我' : '对方'
+    let content = line
+
+    const meMatch = line.match(/^(我|me|Me|ME|自己|本人)\s*[:：]\s*(.+)$/)
+    const otherMatch = line.match(/^(对方|ta|TA|Ta|他|她|好友|朋友)\s*[:：]\s*(.+)$/)
+
+    if (meMatch) {
+      sender = '我'
+      content = meMatch[2].trim()
+    } else if (otherMatch) {
+      sender = '对方'
+      content = otherMatch[2].trim()
+    }
+
+    if (!content) continue
+
+    const ts = new Date(base.getTime() + idx * 90_000)
+    const timestamp = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}-${String(ts.getDate()).padStart(2, '0')} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}:${String(ts.getSeconds()).padStart(2, '0')}`
+
+    messages.push({
+      timestamp,
+      sender,
+      content,
+      type: detectMessageType(content),
+    })
+
+    idx++
+    nextIsMe = !nextIsMe
+  }
+
   return messages
 }
 
