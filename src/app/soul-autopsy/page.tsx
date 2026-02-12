@@ -321,19 +321,18 @@ export default function SoulAutopsyPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-transparent text-slate-900">
       {/* Header */}
-      <header className="fixed top-0 w-full z-50 glass-card-dark border-b border-white/5 px-6 py-4">
+      <header className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur border-b border-slate-200 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-white/60 hover:text-white/90 transition-colors">
+          <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             返回
           </Link>
           <div className="flex items-center gap-2">
-            <span className="text-2xl">💎</span>
-            <span className="font-bold text-gradient-soul">感情透视报告</span>
+            <span className="text-sm font-semibold tracking-wide text-slate-900">AI 情感法医</span>
           </div>
         </div>
       </header>
@@ -344,15 +343,15 @@ export default function SoulAutopsyPage() {
         {stage === 'upload' && (
           <div className="max-w-2xl mx-auto animate-fade-in-up">
             <div className="text-center mb-12">
-              <div className="text-6xl mb-4">💎</div>
+              <div className="mb-4 text-xs uppercase tracking-[0.2em] text-slate-400">Soul Autopsy</div>
               <h1 className="text-4xl md:text-5xl font-black mb-3">
                 <span className="text-gradient-soul">感情透视报告</span>
               </h1>
-              <p className="text-white/40 text-lg">上传你们的聊天记录，AI 帮你看清他的心</p>
-              <div className="mt-3 text-xs text-white/35">预计耗时 30-90 秒，支持手机截图直接上传</div>
-              <div className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-sm text-white/50">
-                <span className="w-2 h-2 rounded-full bg-pink-400 animate-pulse" />
-                ✨ 限时免费体验
+              <p className="text-slate-500 text-lg">上传你们的聊天记录，AI 帮你看清他的心</p>
+              <div className="mt-3 text-xs text-slate-500">预计耗时 30-90 秒，支持手机截图直接上传</div>
+              <div className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-sm text-slate-600">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                免费公测中
               </div>
             </div>
 
@@ -362,8 +361,8 @@ export default function SoulAutopsyPage() {
                 onClick={() => setUploadMode('screenshot')}
                 className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all ${
                   uploadMode === 'screenshot'
-                    ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30 text-pink-300'
-                    : 'text-white/40 hover:text-white/70'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 📸 截图上传
@@ -372,8 +371,8 @@ export default function SoulAutopsyPage() {
                 onClick={() => setUploadMode('text')}
                 className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all ${
                   uploadMode === 'text'
-                    ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30 text-pink-300'
-                    : 'text-white/40 hover:text-white/70'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 📄 文件上传
@@ -385,7 +384,7 @@ export default function SoulAutopsyPage() {
                 {/* 截图上传区 */}
                 <div
                   className={`relative glass-card p-8 text-center cursor-pointer transition-all duration-300 ${
-                    isDragging ? 'border-pink-400 bg-pink-500/5 scale-[1.02]' : 'hover:border-white/20 hover:bg-white/[0.06]'
+                    isDragging ? 'border-slate-400 bg-slate-50 scale-[1.01]' : 'hover:border-slate-300 hover:bg-slate-50'
                   }`}
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                   onDragLeave={() => setIsDragging(false)}
@@ -401,20 +400,20 @@ export default function SoulAutopsyPage() {
                     onChange={(e) => e.target.files && handleMultipleScreenshots(e.target.files)}
                   />
                   <div className="text-5xl mb-4">{isDragging ? '📥' : '📸'}</div>
-                  <p className="text-white/60 text-lg mb-2">
+                  <p className="text-slate-600 text-lg mb-2">
                     {isDragging ? '松开上传' : '点击上传聊天截图'}
                   </p>
-                  <p className="text-white/30 text-sm">支持多张截图，AI 自动识别聊天内容</p>
+                  <p className="text-slate-400 text-sm">支持多张截图，AI 自动识别聊天内容</p>
                 </div>
 
                 {/* 已上传的截图预览 */}
                 {screenshots.length > 0 && (
                   <div className="mt-4 glass-card p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-white/60 text-sm">已上传 {screenshots.length} 张截图</span>
+                      <span className="text-slate-600 text-sm">已上传 {screenshots.length} 张截图</span>
                       <button
                         onClick={() => imgInputRef.current?.click()}
-                        className="text-pink-400 text-xs hover:text-pink-300"
+                        className="text-slate-500 text-xs hover:text-slate-700"
                       >
                         + 继续添加
                       </button>
@@ -435,13 +434,13 @@ export default function SoulAutopsyPage() {
                   </div>
                 )}
 
-                <div className="mt-4 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300/80 text-xs text-center">
-                  💡 直接手机截图微信聊天界面，多截几张效果更好
+                <div className="mt-4 px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-xs text-center">
+                  建议直接上传手机原始截图，连续对话识别更稳定
                 </div>
-                <div className="mt-3 grid gap-2 text-xs text-white/45 sm:grid-cols-3">
-                  <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">建议 3-8 张连续对话</div>
-                  <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">尽量包含时间与双方气泡</div>
-                  <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">上传原图，避免转发压缩</div>
+                <div className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">建议 3-8 张连续对话</div>
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">尽量包含时间与双方气泡</div>
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">上传原图，避免转发压缩</div>
                 </div>
               </>
             ) : (
@@ -449,7 +448,7 @@ export default function SoulAutopsyPage() {
                 {/* 文件上传区 */}
                 <div
                   className={`relative glass-card p-12 text-center cursor-pointer transition-all duration-300 ${
-                    isDragging ? 'border-pink-400 bg-pink-500/5 scale-[1.02]' : 'hover:border-white/20 hover:bg-white/[0.06]'
+                    isDragging ? 'border-slate-400 bg-slate-50 scale-[1.01]' : 'hover:border-slate-300 hover:bg-slate-50'
                   }`}
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                   onDragLeave={() => setIsDragging(false)}
@@ -466,29 +465,29 @@ export default function SoulAutopsyPage() {
                   {fileName ? (
                     <div>
                       <div className="text-5xl mb-4">📄</div>
-                      <p className="text-white/80 font-medium text-lg mb-1">{fileName}</p>
-                      <p className="text-white/40 text-sm">点击更换文件</p>
+                      <p className="text-slate-800 font-medium text-lg mb-1">{fileName}</p>
+                      <p className="text-slate-500 text-sm">点击更换文件</p>
                     </div>
                   ) : (
                     <div>
                       <div className="text-5xl mb-4">💌</div>
-                      <p className="text-white/60 text-lg mb-2">点击上传聊天记录文件</p>
-                      <p className="text-white/30 text-sm">支持 .txt / .csv 格式</p>
+                      <p className="text-slate-600 text-lg mb-2">点击上传聊天记录文件</p>
+                      <p className="text-slate-400 text-sm">支持 .txt / .csv 格式</p>
                     </div>
                   )}
                 </div>
                 <div className="mt-4 glass-card-dark p-4">
-                  <p className="text-white/40 text-xs">📋 微信电脑版 → 聊天窗口右上角「...」→「导出聊天记录」→ 选TXT格式</p>
+                  <p className="text-slate-500 text-xs">📋 微信电脑版 → 聊天窗口右上角「...」→「导出聊天记录」→ 选TXT格式</p>
                 </div>
               </>
             )}
 
-            <div className="mt-4 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300/80 text-xs text-center">
-              🔒 放心，数据仅在你的浏览器中处理，我们不会保存任何聊天内容
+            <div className="mt-4 px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-xs text-center">
+              数据仅用于本次分析，请先自行打码敏感信息
             </div>
 
             {error && (
-              <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
                 {error}
               </div>
             )}
@@ -497,14 +496,14 @@ export default function SoulAutopsyPage() {
               <button
                 onClick={startAnalysis}
                 disabled={ocrLoading}
-                className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-rose-400 via-pink-500 to-purple-500 text-white font-bold text-lg hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-50"
+                className="mt-8 w-full py-4 rounded-xl bg-slate-900 text-white font-bold text-lg hover:bg-slate-800 transition active:scale-[0.98] disabled:opacity-50"
               >
                 {ocrLoading ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                     AI 正在识别截图文字...
                   </span>
-                ) : '💎 开始分析（免费）'}
+                ) : '开始分析（免费）'}
               </button>
             )}
 
@@ -515,7 +514,7 @@ export default function SoulAutopsyPage() {
                 setFileContent(DEMO_CHAT)
                 startAnalysisWithText(DEMO_CHAT, 12)
               }}
-              className="mt-4 w-full py-3 rounded-xl border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all text-sm"
+              className="mt-4 w-full py-3 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-all text-sm"
             >
               ⚡ 10 秒看示例报告（免上传）
             </button>
@@ -525,18 +524,18 @@ export default function SoulAutopsyPage() {
         {/* ===== 分析中 ===== */}
         {stage === 'analyzing' && (
           <div className="max-w-lg mx-auto text-center pt-20 animate-fade-in-up">
-            <div className="text-7xl mb-8 animate-float">💎</div>
+            <div className="text-2xl mb-8 font-semibold text-slate-800">AI 正在生成报告</div>
             <h2 className="text-2xl font-bold mb-2">正在分析你们的关系...</h2>
-            <p className="text-white/40 mb-10">{progressText}</p>
-            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden mb-4">
+            <p className="text-slate-500 mb-10">{progressText}</p>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-4">
               <div
-                className="h-full bg-gradient-to-r from-rose-400 via-pink-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
+                className="h-full bg-slate-900 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />
             </div>
-            <p className="text-white/30 text-sm">{Math.round(progress)}%</p>
+            <p className="text-slate-400 text-sm">{Math.round(progress)}%</p>
             <div className="mt-12 glass-card-dark p-6 text-left">
-              <p className="text-white/30 text-sm italic leading-relaxed">
+              <p className="text-slate-400 text-sm italic leading-relaxed">
                 &ldquo;每一条消息背后都藏着一个真相。
                 <br />有时候看清了，反而是解脱的开始。&rdquo;
               </p>
@@ -549,11 +548,11 @@ export default function SoulAutopsyPage() {
           <div className="max-w-4xl mx-auto animate-fade-in-up">
             <div ref={reportRef} className="share-target">
               <div className="text-center mb-12">
-                <div className="text-6xl mb-4">💌</div>
+                <div className="mb-4 text-xs uppercase tracking-[0.2em] text-slate-400">Report</div>
                 <h1 className="text-3xl md:text-4xl font-black mb-2">
                   <span className="text-gradient-soul">感情透视报告</span>
                 </h1>
-                <p className="text-white/30 text-sm">
+                <p className="text-slate-400 text-sm">
                   生成时间: {new Date().toLocaleString('zh-CN')}
                 </p>
               </div>
@@ -570,13 +569,13 @@ export default function SoulAutopsyPage() {
               {report.stats && (
                 <div className="grid md:grid-cols-2 gap-4 mb-8">
                   <div className="glass-card p-6">
-                    <h3 className="text-white/80 font-bold mb-4 flex items-center gap-2">
+                    <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2">
                       <span>🕐</span> 24小时消息分布
                     </h3>
                     <HourChart data={report.stats.messagesByHour || []} />
                   </div>
                   <div className="glass-card p-6">
-                    <h3 className="text-white/80 font-bold mb-4 flex items-center gap-2">
+                    <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2">
                       <span>⚖️</span> 谁发的消息更多？
                     </h3>
                     <SenderChart data={report.stats.messagesBySender || {}} />
@@ -585,7 +584,7 @@ export default function SoulAutopsyPage() {
               )}
 
               <div className="glass-card p-8 md:p-12 mb-8">
-                <div className="prose prose-invert max-w-none prose-headings:text-gradient-soul prose-h2:text-2xl prose-h2:font-black prose-h2:mt-10 prose-h2:mb-4 prose-p:text-white/70 prose-p:leading-relaxed prose-li:text-white/60 prose-strong:text-white/90">
+                <div className="prose prose-invert max-w-none prose-headings:text-gradient-soul prose-h2:text-2xl prose-h2:font-black prose-h2:mt-10 prose-h2:mb-4 prose-p:text-slate-700 prose-p:leading-relaxed prose-li:text-slate-600 prose-strong:text-slate-900">
                   <div dangerouslySetInnerHTML={{ __html: formatReport(report.report) }} />
                 </div>
               </div>
@@ -603,16 +602,16 @@ export default function SoulAutopsyPage() {
                 />
                 <button
                   onClick={() => { setStage('upload'); setReport(null); setFileContent(''); setFileName('') }}
-                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white/90 hover:border-white/20 transition-all text-sm"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all text-sm"
                 >
                   📁 分析另一段关系
                 </button>
               </div>
               <Link
                 href="/ai-fortune"
-                className="py-3 rounded-xl bg-gradient-to-r from-violet-400 via-purple-500 to-indigo-500 text-white font-bold text-center hover:opacity-90 transition-opacity text-sm"
+                className="py-3 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold text-center hover:bg-slate-50 transition text-sm"
               >
-                🔮 看完真相，不如算一卦未来会更好吗？
+                去看 AI 占卜
               </Link>
             </div>
 
@@ -629,8 +628,8 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
   return (
     <div className="glass-card p-4 text-center">
       <div className="text-2xl mb-1">{icon}</div>
-      <div className="text-xl font-black text-white/90">{value}</div>
-      <div className="text-xs text-white/40">{label}</div>
+      <div className="text-xl font-black text-slate-900">{value}</div>
+      <div className="text-xs text-slate-500">{label}</div>
     </div>
   )
 }
@@ -642,11 +641,11 @@ function HourChart({ data }: { data: number[] }) {
       {data.map((val, i) => (
         <div key={i} className="flex-1 flex flex-col items-center gap-1">
           <div
-            className="w-full rounded-t bg-gradient-to-t from-pink-500/60 to-purple-500/80 transition-all hover:from-pink-400 hover:to-purple-400 min-h-[2px]"
+            className="w-full rounded-t bg-slate-700/80 transition-all hover:bg-slate-700 min-h-[2px]"
             style={{ height: `${(val / max) * 100}%` }}
             title={`${i}:00 - ${val}条消息`}
           />
-          {i % 4 === 0 && <span className="text-[10px] text-white/30">{i}</span>}
+          {i % 4 === 0 && <span className="text-[10px] text-slate-400">{i}</span>}
         </div>
       ))}
     </div>
@@ -656,17 +655,17 @@ function HourChart({ data }: { data: number[] }) {
 function SenderChart({ data }: { data: Record<string, number> }) {
   const entries = Object.entries(data)
   const total = entries.reduce((s, [, v]) => s + v, 0) || 1
-  const colors = ['from-pink-400 to-rose-400', 'from-purple-400 to-indigo-400', 'from-amber-400 to-orange-400', 'from-green-400 to-teal-400']
+  const colors = ['bg-slate-900', 'bg-slate-700', 'bg-slate-500', 'bg-slate-400']
   return (
     <div className="space-y-3">
       {entries.map(([name, count], i) => (
         <div key={name}>
           <div className="flex justify-between text-sm mb-1">
-            <span className="text-white/70 truncate max-w-[60%]">{name}</span>
-            <span className="text-white/40">{count} ({Math.round(count / total * 100)}%)</span>
+            <span className="text-slate-700 truncate max-w-[60%]">{name}</span>
+            <span className="text-slate-500">{count} ({Math.round(count / total * 100)}%)</span>
           </div>
-          <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full bg-gradient-to-r ${colors[i % colors.length]} transition-all duration-1000`} style={{ width: `${(count / total) * 100}%` }} />
+          <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full ${colors[i % colors.length]} transition-all duration-1000`} style={{ width: `${(count / total) * 100}%` }} />
           </div>
         </div>
       ))}
@@ -677,9 +676,9 @@ function SenderChart({ data }: { data: Record<string, number> }) {
 function formatReport(markdown: string): string {
   return markdown
     .replace(/## (.*)/g, '<h2>$1</h2>')
-    .replace(/### (.*)/g, '<h3 class="text-lg font-bold text-white/80 mt-6 mb-2">$1</h3>')
+    .replace(/### (.*)/g, '<h3 class="text-lg font-bold text-slate-800 mt-6 mb-2">$1</h3>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em class="text-white/50">$1</em>')
+    .replace(/\*(.*?)\*/g, '<em class="text-slate-500">$1</em>')
     .replace(/^- (.*)/gm, '<li>$1</li>')
     .replace(/(<li>[\s\S]*<\/li>)/, '<ul class="list-disc list-inside space-y-1">$1</ul>')
     .replace(/\n{2,}/g, '</p><p>')
@@ -778,3 +777,4 @@ const DEMO_CHAT = `2024-01-15 08:30:15 小明
 2024-01-17 00:05:00 小明
 你一定睡了吧 晚安晚安
 `
+

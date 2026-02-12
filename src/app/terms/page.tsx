@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 
 export const metadata = {
   title: '用户协议 | 月见',
@@ -9,52 +9,40 @@ export default function TermsPage() {
     <div className="min-h-screen px-4 py-10">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-black">用户协议</h1>
-          <Link href="/" className="text-slate-500 text-sm hover:text-slate-900">
-            返回首页
-          </Link>
+          <h1 className="text-2xl font-semibold text-slate-900">用户协议</h1>
+          <Link href="/" className="text-sm text-slate-500 transition hover:text-slate-900">返回首页</Link>
         </div>
 
-        <div className="glass-card p-6 text-sm text-slate-700 space-y-4 leading-7">
+        <div className="glass-card space-y-4 p-6 text-sm leading-7 text-slate-700">
           <p className="text-slate-500">生效日期：{new Date().toLocaleDateString('zh-CN')}</p>
 
-          <section className="space-y-2">
-            <h2 className="text-slate-900 font-bold">1. 服务性质</h2>
-            <p>
-              本站提供的“情感分析/塔罗解读/运势建议/文案改写”等内容，仅供参考与娱乐/信息辅助之用，
-              不构成法律、医疗、心理治疗、投资等专业意见。
+          <section>
+            <h2 className="font-semibold text-slate-900">1. 服务性质</h2>
+            <p className="mt-1">
+              本站输出内容用于参考与信息辅助，不构成法律、医疗、心理治疗或投资建议。
             </p>
           </section>
 
-          <section className="space-y-2">
-            <h2 className="text-slate-900 font-bold">2. 你不得做的事情</h2>
-            <ul className="list-disc list-inside space-y-1">
-              <li>上传或传播违法、侵权、隐私敏感内容。</li>
-              <li>未经他人同意处理他人聊天记录/隐私信息。</li>
-              <li>通过自动化脚本、刷接口等方式滥用服务。</li>
+          <section>
+            <h2 className="font-semibold text-slate-900">2. 使用规范</h2>
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>不得上传违法、侵权或未经授权的内容。</li>
+              <li>不得通过自动化手段滥用接口或攻击服务。</li>
+              <li>不得利用本服务实施诈骗、骚扰或其他违法行为。</li>
             </ul>
           </section>
 
-          <section className="space-y-2">
-            <h2 className="text-slate-900 font-bold">3. 付费与交付</h2>
-            <p>
-              若你购买付费功能，我们将向你提供对应的解锁/使用权限。不同产品的交付方式可能包括：解锁码、页面权限、或其他方式。
+          <section>
+            <h2 className="font-semibold text-slate-900">3. 付费与交付</h2>
+            <p className="mt-1">
+              付费功能将以页面展示的方式交付（如解锁权限、功能次数、专属结果等）。
             </p>
           </section>
 
-          <section className="space-y-2">
-            <h2 className="text-slate-900 font-bold">4. 退款说明</h2>
-            <p>
-              由于本服务包含即时生成/可复制的数字化内容，一旦完成生成或完成解锁，原则上不支持无理由退款。
-              若出现重复扣款、未交付等问题，请通过站内指引联系我们处理。
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-slate-900 font-bold">5. 免责声明</h2>
-            <p>
-              你理解并同意：AI 可能产生不准确或不完整的输出；你应基于自己的判断做决定并承担后果。
-              我们不对因使用本站内容而产生的任何损失承担责任。
+          <section>
+            <h2 className="font-semibold text-slate-900">4. 免责与限制</h2>
+            <p className="mt-1">
+              你理解并同意：AI 可能出现不准确或不完整输出，最终决策需由你自行判断并承担后果。
             </p>
           </section>
         </div>
