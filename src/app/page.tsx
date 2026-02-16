@@ -24,6 +24,15 @@ export default function HomePage() {
       badge: '引流产品',
       cta: '马上占卜',
     },
+    {
+      id: 3,
+      title: '内容工厂',
+      subtitle: '改写 + 创作 + 批量标题',
+      description: '快速产出小红书/抖音素材，把产品能力持续转化为可发布内容。',
+      href: '/content-launderer',
+      badge: '增长工具',
+      cta: '开始创作',
+    },
   ] as const
 
   return (
@@ -61,10 +70,17 @@ export default function HomePage() {
             >
               打开 AI 占卜
             </Link>
+            <Link
+              href="/marketing"
+              onClick={() => trackGrowthEvent({ name: 'cta_click', page: '/', detail: 'hero_marketing' })}
+              className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              进入营销作战台
+            </Link>
           </div>
         </div>
 
-        <div className="mt-10 grid gap-5 md:grid-cols-2">
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
           {products.map((product) => (
             <Link
               key={product.id}

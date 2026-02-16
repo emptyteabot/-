@@ -23,11 +23,17 @@ const doneModules = [
     desc: '主页 CTA、分析开始/完成、分享点击全部可追踪。',
     files: ['src/app/page.tsx', 'src/app/soul-autopsy/page.tsx', 'src/app/ai-fortune/page.tsx'],
   },
+  {
+    title: '营销作战台',
+    desc: '内置执行清单、渠道话术、7日目标和转化入口。',
+    files: ['src/app/marketing/page.tsx'],
+  },
 ]
 
 const nowStatus = [
   '本地构建通过（npm run build）',
   '增长看板可访问（/growth）',
+  '营销作战台可访问（/marketing）',
   '项目总览可访问（/overview）',
   '线上可自动部署更新',
 ]
@@ -47,6 +53,7 @@ export default function OverviewPage() {
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/" className="btn-primary">打开首页</Link>
             <Link href="/growth" className="btn-secondary">打开增长看板</Link>
+            <Link href="/marketing" className="btn-secondary">打开营销作战台</Link>
             <Link href="/soul-autopsy" className="btn-secondary">打开情感法医</Link>
             <Link href="/ai-fortune" className="btn-secondary">打开 AI 占卜</Link>
           </div>

@@ -32,7 +32,12 @@ export default function GrowthPage() {
   const shares = todayEvents.filter((e) => e.name === 'share_click').length
   const starts = todayEvents.filter((e) => e.name === 'analysis_start').length
   const dones = todayEvents.filter((e) => e.name === 'analysis_done').length
+  const leadSubmit = todayEvents.filter((e) => e.name === 'lead_submit').length
+  const leadSuccess = todayEvents.filter((e) => e.name === 'lead_success').length
+  const templateCopy = todayEvents.filter((e) => e.name === 'template_copy').length
+  const campaignStart = todayEvents.filter((e) => e.name === 'campaign_start').length
   const rate = starts ? Math.round((dones / starts) * 100) : 0
+  const leadRate = leadSubmit ? Math.round((leadSuccess / leadSubmit) * 100) : 0
 
   const topPages = useMemo(() => groupCount(todayEvents.filter((e) => e.name === 'page_view'), (e) => e.page), [todayEvents])
   const topSources = useMemo(
@@ -65,11 +70,15 @@ export default function GrowthPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-4 lg:grid-cols-8">
           <div className="glass-card p-4"><div className="text-xs text-slate-500">今日访问</div><div className="mt-1 text-2xl font-semibold">{views}</div></div>
           <div className="glass-card p-4"><div className="text-xs text-slate-500">开始分析</div><div className="mt-1 text-2xl font-semibold">{starts}</div></div>
           <div className="glass-card p-4"><div className="text-xs text-slate-500">完成分析</div><div className="mt-1 text-2xl font-semibold">{dones}</div></div>
           <div className="glass-card p-4"><div className="text-xs text-slate-500">完成率</div><div className="mt-1 text-2xl font-semibold">{rate}%</div></div>
+          <div className="glass-card p-4"><div className="text-xs text-slate-500">营销启动</div><div className="mt-1 text-2xl font-semibold">{campaignStart}</div></div>
+          <div className="glass-card p-4"><div className="text-xs text-slate-500">模板复制</div><div className="mt-1 text-2xl font-semibold">{templateCopy}</div></div>
+          <div className="glass-card p-4"><div className="text-xs text-slate-500">提交线索</div><div className="mt-1 text-2xl font-semibold">{leadSubmit}</div></div>
+          <div className="glass-card p-4"><div className="text-xs text-slate-500">留资通过率</div><div className="mt-1 text-2xl font-semibold">{leadRate}%</div></div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -102,8 +111,8 @@ export default function GrowthPage() {
           <div className="font-semibold text-slate-900">执行建议</div>
           <div className="mt-2">1. 访问低于 300：优先发内容引流。</div>
           <div>2. 开始分析高但完成率低：继续缩短上传到结果的等待时间。</div>
-          <div>3. 分享低：在结果页强化“分享领取权益”。</div>
-          <div className="mt-2 text-xs text-slate-500">今日分享点击：{shares}</div>
+          <div>3. 留资通过率低：先优化联系方式提示与私信承接话术。</div>
+          <div className="mt-2 text-xs text-slate-500">今日分享点击：{shares}，模板复制：{templateCopy}</div>
         </div>
       </div>
     </div>

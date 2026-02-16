@@ -1,6 +1,9 @@
 export type GrowthEventName =
   | 'page_view'
   | 'cta_click'
+  | 'marketing_open'
+  | 'campaign_start'
+  | 'template_copy'
   | 'analysis_start'
   | 'analysis_done'
   | 'analysis_fail'

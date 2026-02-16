@@ -1,45 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { chatCompletion } from '@/lib/ai'
-import {
-  drawTarotCards,
-  getZodiacSign,
-  calculateBazi,
-  FORTUNE_PROMPTS,
-} from '@/lib/fortune-engine'
+import { drawTarotCards, getZodiacSign, calculateBazi, FORTUNE_PROMPTS } from '@/lib/fortune-engine'
 import { growthModeEnabled, isPaid } from '@/lib/paywall'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = applyRateLimit(req, 'fortune', {
+      limit: Number(process.env.RL_FORTUNE_LIMIT || 16),
+      windowMs: Number(process.env.RL_FORTUNE_WINDOW_MS || 60_000),
+    })
+    if (limited) return limited
+
     const body = await req.json()
-    const { type } = body // 'tarot' | 'daily'
+    const type = String(body?.type || '').trim() // tarot | daily
 
     if (type === 'tarot') {
-      const { question, cardCount } = body
-      const cards = drawTarotCards(cardCount || 3)
-      const prompt = FORTUNE_PROMPTS.tarot(cards, question || '')
+      const question = String(body?.question || '').trim()
+      const cardCount = Number(body?.cardCount || 3)
+      const cards = drawTarotCards(cardCount)
+      const prompt = FORTUNE_PROMPTS.tarot(cards, question)
 
       const paid = growthModeEnabled() || (await isPaid('fortune-tarot'))
       const reading = await chatCompletion(
         prompt,
         paid
-          ? `请为我解读这 ${cards.length} 张塔罗牌。${question ? `我的问题是：${question}` : '我想知道最近的整体运势。'}`
-          : `请为我输出“试读版塔罗解读”（300-500字）。${question ? `我的问题是：${question}` : ''}\n\n要求：\n1) 输出要具体、有场景。\n2) 结尾给3条可执行建议。\n3) 不要提到解锁码/付费/价格。`,
-        { temperature: 0.9, maxTokens: paid ? 3000 : 900 }
+          ? '请给我完整解读。'
+          : '请输出试读版解读（300-500字），结尾用一句话引导查看完整建议，不出现价格。',
+        { temperature: 0.9, maxTokens: paid ? 2200 : 800, preferFast: true }
       )
 
       return NextResponse.json({ cards, reading, locked: !paid })
     }
 
     if (type === 'daily') {
-      const { birthday, birthHour } = body
+      const birthday = String(body?.birthday || '').trim()
+      const birthHour = body?.birthHour
+
       if (!birthday) {
-        return NextResponse.json({ error: '请输入生日' }, { status: 400 })
+        return NextResponse.json({ error: '请输入生日（YYYY-MM-DD）' }, { status: 400 })
       }
 
-      const [year, month, day] = birthday.split('-').map(Number)
+      const parts = birthday.split('-').map((v: string) => Number(v))
+      if (parts.length !== 3 || parts.some((v) => !Number.isFinite(v))) {
+        return NextResponse.json({ error: '生日格式不正确，请使用 YYYY-MM-DD' }, { status: 400 })
+      }
+
+      const [year, month, day] = parts
       const zodiac = getZodiacSign(month, day)
-      const bazi = birthHour !== undefined
-        ? calculateBazi(year, month, day, birthHour)
+
+      const hourNum = Number(birthHour)
+      const bazi = Number.isFinite(hourNum) && hourNum >= 0 && hourNum <= 23
+        ? calculateBazi(year, month, day, hourNum)
         : undefined
 
       const prompt = FORTUNE_PROMPTS.daily(zodiac, bazi)
@@ -47,23 +59,20 @@ export async function POST(req: NextRequest) {
       const fortune = await chatCompletion(
         prompt,
         paid
-          ? `今天是 ${new Date().toLocaleDateString('zh-CN')}，请为我生成今日运势报告。`
-          : `今天是 ${new Date().toLocaleDateString('zh-CN')}，请为我生成“试读版今日运势”（200-350字），包含：感情/事业/财运各一句 + 2条行动建议。不要提到解锁码/付费/价格。`,
-        { temperature: 0.85, maxTokens: paid ? 2000 : 700 }
+          ? '请输出完整今日运势。'
+          : '请输出试读版（200-350字），包含感情/事业/财运简评和2条可执行建议。',
+        { temperature: 0.85, maxTokens: paid ? 1600 : 650, preferFast: true }
       )
 
       return NextResponse.json({ zodiac, bazi, fortune, locked: !paid })
     }
 
-    return NextResponse.json({ error: '未知的算命类型' }, { status: 400 })
+    return NextResponse.json({ error: '未知的占卜类型' }, { status: 400 })
   } catch (err: any) {
     console.error('AI Fortune Error:', err)
     return NextResponse.json(
-      { error: err.message || '算命失败，天道不允许' },
+      { error: err?.message || '占卜服务暂时不可用，请稍后重试' },
       { status: 500 }
     )
   }
 }
-
-
-

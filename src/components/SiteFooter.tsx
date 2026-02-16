@@ -12,6 +12,8 @@ export default function SiteFooter() {
           <Link href="/terms" className="transition hover:text-slate-900">用户协议</Link>
           <span className="text-slate-300">|</span>
           <Link href="/overview" className="transition hover:text-slate-900">项目总览</Link>
+          <span className="text-slate-300">|</span>
+          <Link href="/marketing" className="transition hover:text-slate-900">营销作战台</Link>
         </div>
         <p className="max-w-4xl leading-5 text-slate-600">
           提示：上传或粘贴内容可能会发送至第三方 AI 服务进行处理。请先打码敏感信息，并确保你拥有合法授权。
