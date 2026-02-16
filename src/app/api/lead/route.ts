@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 type LeadIntent = 'trial' | 'purchase' | 'agent' | 'other'
 
@@ -18,6 +19,12 @@ function bad(msg: string, status = 400) {
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = applyRateLimit(req, 'lead', {
+      limit: Number(process.env.RL_LEAD_LIMIT || 20),
+      windowMs: Number(process.env.RL_LEAD_WINDOW_MS || 60_000),
+    })
+    if (limited) return limited
+
     const body = await req.json()
     const contact = String(body?.contact || '').trim()
     const channel = String(body?.channel || '').trim()
@@ -59,7 +66,7 @@ export async function POST(req: NextRequest) {
         return bad(`线索保存失败: webhook ${r.status}${text ? ` ${text.slice(0, 120)}` : ''}`, 502)
       }
     } else {
-      // Fallback for early stage: no webhook configured yet.
+      // 早期阶段未接 webhook 时写日志，避免丢线索。
       console.log('[LEAD_CAPTURE]', payload)
     }
 

@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { chatWithImages } from '@/lib/ai'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 /**
  * OCR screenshots -> extracted plain chat text.
@@ -35,6 +36,12 @@ function looksLikeRefusal(input: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = applyRateLimit(req, 'ocr-chat', {
+      limit: Number(process.env.RL_OCR_CHAT_LIMIT || 16),
+      windowMs: Number(process.env.RL_OCR_CHAT_WINDOW_MS || 60_000),
+    })
+    if (limited) return limited
+
     const { images } = await req.json()
 
     if (!images || !Array.isArray(images) || images.length === 0) {

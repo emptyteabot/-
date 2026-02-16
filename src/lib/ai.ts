@@ -1,9 +1,15 @@
-import OpenAI from 'openai'
+﻿import OpenAI from 'openai'
 
 type ChatOptions = {
   temperature?: number
   maxTokens?: number
   preferFast?: boolean
+}
+
+type ProviderConfig = {
+  client: OpenAI | null
+  model: string
+  label: string
 }
 
 function toMs(v: string | undefined, fallback: number) {
@@ -28,7 +34,7 @@ function makeClient(apiKey?: string, baseURL?: string) {
   return new OpenAI({ apiKey, baseURL })
 }
 
-function primary() {
+function primary(): ProviderConfig {
   return {
     client: makeClient(process.env.AI_API_KEY, process.env.AI_BASE_URL),
     model: process.env.AI_MODEL || 'claude-sonnet-4-5-20250929',
@@ -36,7 +42,7 @@ function primary() {
   }
 }
 
-function fallback() {
+function fallback(): ProviderConfig {
   return {
     client: makeClient(process.env.AI_FALLBACK_API_KEY, process.env.AI_FALLBACK_BASE_URL),
     model: process.env.AI_FALLBACK_MODEL || 'deepseek-chat',
@@ -50,27 +56,30 @@ function isReasoningModel(model: string): boolean {
 }
 
 function fastModelFor(model: string): string {
-  // User can override with AI_FAST_MODEL (recommended: deepseek-chat / claude-sonnet / gpt-4o-mini class)
   if (process.env.AI_FAST_MODEL) return process.env.AI_FAST_MODEL
   if (model.toLowerCase().includes('deepseek')) return 'deepseek-chat'
   return model
 }
 
-// OCR should use a vision-capable provider/model. If unset, we reuse primary/fallback.
-function ocrPrimary() {
+function ocrPrimary(): ProviderConfig {
   return {
     client: makeClient(process.env.AI_OCR_API_KEY, process.env.AI_OCR_BASE_URL) || primary().client,
     model: process.env.AI_OCR_MODEL || primary().model,
-    label: process.env.AI_OCR_BASE_URL || process.env.AI_OCR_API_KEY || process.env.AI_OCR_MODEL ? 'ocr_primary' : 'primary',
+    label:
+      process.env.AI_OCR_BASE_URL || process.env.AI_OCR_API_KEY || process.env.AI_OCR_MODEL
+        ? 'ocr_primary'
+        : 'primary',
   }
 }
 
-function ocrFallback() {
+function ocrFallback(): ProviderConfig {
   return {
     client: makeClient(process.env.AI_OCR_FALLBACK_API_KEY, process.env.AI_OCR_FALLBACK_BASE_URL) || fallback().client,
     model: process.env.AI_OCR_FALLBACK_MODEL || fallback().model,
     label:
-      process.env.AI_OCR_FALLBACK_BASE_URL || process.env.AI_OCR_FALLBACK_API_KEY || process.env.AI_OCR_FALLBACK_MODEL
+      process.env.AI_OCR_FALLBACK_BASE_URL ||
+      process.env.AI_OCR_FALLBACK_API_KEY ||
+      process.env.AI_OCR_FALLBACK_MODEL
         ? 'ocr_fallback'
         : 'fallback',
   }
@@ -86,17 +95,18 @@ function ocrLatestAlias(model: string): string | null {
 export async function chatCompletion(systemPrompt: string, userMessage: string, options?: ChatOptions): Promise<string> {
   const p = primary()
   const f = fallback()
-  const pFast = p.client
+  const pFast: ProviderConfig | null = p.client
     ? {
         ...p,
         model: fastModelFor(p.model),
         label: `${p.label}_fast`,
       }
     : null
+
   const preferFast = Boolean(options?.preferFast)
   const tries = preferFast
-    ? [pFast, f, p].filter(Boolean) as Array<{ client: OpenAI | null; model: string; label: string }>
-    : [p, pFast, f].filter(Boolean) as Array<{ client: OpenAI | null; model: string; label: string }>
+    ? [pFast, f, p].filter(Boolean) as ProviderConfig[]
+    : [p, pFast, f].filter(Boolean) as ProviderConfig[]
 
   const maxTries = toMs(process.env.AI_MAX_TRIES, 2)
   const totalBudgetMs = toMs(process.env.AI_TOTAL_TIMEOUT_MS, 38000)
@@ -109,13 +119,12 @@ export async function chatCompletion(systemPrompt: string, userMessage: string, 
       break
     }
     if (!t.client) continue
+
     try {
-      const timeoutMs = toMs(
-        process.env.AI_TIMEOUT_MS,
-        isReasoningModel(t.model) ? 18000 : 20000
-      )
+      const timeoutMs = toMs(process.env.AI_TIMEOUT_MS, isReasoningModel(t.model) ? 18000 : 20000)
       const timeoutCapMs = toMs(process.env.AI_TIMEOUT_CAP_MS, 22000)
       const boundedTimeoutMs = Math.min(timeoutMs, timeoutCapMs)
+
       const response = await withTimeout(
         t.client.chat.completions.create({
           model: t.model,
@@ -129,6 +138,7 @@ export async function chatCompletion(systemPrompt: string, userMessage: string, 
         boundedTimeoutMs,
         `${t.label}(${t.model})`
       )
+
       const content = response.choices[0]?.message?.content
       if (content) return content
       errors.push(`${t.label}(${t.model}): empty-content`)
@@ -140,8 +150,9 @@ export async function chatCompletion(systemPrompt: string, userMessage: string, 
   }
 
   if (!primary().client && !fallback().client) {
-    throw new Error('未配置任何 AI API：请检查 .env.local / Vercel 环境变量 (AI_API_KEY/AI_BASE_URL 等)。')
+    throw new Error('未配置可用的 AI 接口，请检查环境变量 AI_API_KEY / AI_BASE_URL（及可选 fallback）。')
   }
+
   throw new Error(`AI 服务暂时不可用，请稍后重试。详情: ${errors.join(' | ')}`)
 }
 
@@ -151,7 +162,7 @@ export async function chatWithImages(
   imageBase64List: string[],
   options?: ChatOptions
 ): Promise<string> {
-  const content: any[] = imageBase64List.map(img => ({
+  const content: any[] = imageBase64List.map((img) => ({
     type: 'image_url',
     image_url: { url: img.startsWith('data:') ? img : `data:image/jpeg;base64,${img}` },
   }))
@@ -164,20 +175,24 @@ export async function chatWithImages(
 
   const p = ocrPrimary()
   const f = ocrFallback()
-  const tries = [p]
+  const tries: ProviderConfig[] = [p]
+
   const alias = ocrLatestAlias(p.model)
   if (alias && p.client) {
     tries.push({ ...p, model: alias, label: `${p.label}_latest` })
   }
-  // Qwen OCR models can occasionally fail on specific images, so add a stronger Qwen fallback.
+
   if (p.client && /^qwen-vl/i.test(p.model)) {
     tries.push({ ...p, model: 'qwen-vl-plus-latest', label: `${p.label}_vlplus` })
   }
+
   tries.push(f)
+
   const errors: string[] = []
 
   for (const t of tries) {
     if (!t.client) continue
+
     try {
       const response = await withTimeout(
         t.client.chat.completions.create({
@@ -189,6 +204,7 @@ export async function chatWithImages(
         toMs(process.env.AI_OCR_TIMEOUT_MS, 30000),
         `${t.label}(${t.model})`
       )
+
       const result = response.choices[0]?.message?.content
       if (result && result.trim()) return result
       errors.push(`${t.label}(${t.model}): empty-content`)
@@ -199,11 +215,8 @@ export async function chatWithImages(
     }
   }
 
-  // This is the key user-facing hint: most likely a non-vision model was used.
   throw new Error(
-    `OCR失败：当前模型/接口可能不支持图片输入(image_url)。` +
-      `请在环境变量里配置 AI_OCR_BASE_URL + AI_OCR_MODEL 为“支持视觉(vision)”的模型后重试。` +
-      ` 详情: ${errors.join(' | ')}`
+    `OCR 失败：当前模型或接口可能不支持图像输入（image_url）。请配置 AI_OCR_BASE_URL + AI_OCR_MODEL 为视觉模型后重试。详情: ${errors.join(' | ')}`
   )
 }
 
@@ -216,6 +229,7 @@ export async function* chatCompletionStream(
 
   for (const t of tries) {
     if (!t.client) continue
+
     try {
       const stream = await t.client.chat.completions.create({
         model: t.model,

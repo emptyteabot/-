@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { setPaidCookie, type PayProduct } from '@/lib/paywall'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 const PRODUCT_ENV: Record<PayProduct, string> = {
   soul: 'UNLOCK_CODE_SOUL',
@@ -10,12 +11,18 @@ const PRODUCT_ENV: Record<PayProduct, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = applyRateLimit(req, 'unlock', {
+      limit: Number(process.env.RL_UNLOCK_LIMIT || 30),
+      windowMs: Number(process.env.RL_UNLOCK_WINDOW_MS || 60_000),
+    })
+    if (limited) return limited
+
     const body = await req.json()
     const product = body?.product as PayProduct
     const code = (body?.code as string | undefined)?.trim()
 
     if (!product || !(product in PRODUCT_ENV)) {
-      return NextResponse.json({ error: '未知的产品' }, { status: 400 })
+      return NextResponse.json({ error: '未知的产品类型' }, { status: 400 })
     }
     if (!code) {
       return NextResponse.json({ error: '请输入解锁码' }, { status: 400 })

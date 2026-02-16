@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { chatWithImages } from '@/lib/ai'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 type ImgObj = { base64: string; mediaType?: string }
 
@@ -24,6 +25,12 @@ function looksLikeRefusal(input: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = applyRateLimit(req, 'ocr', {
+      limit: Number(process.env.RL_OCR_LIMIT || 20),
+      windowMs: Number(process.env.RL_OCR_WINDOW_MS || 60_000),
+    })
+    if (limited) return limited
+
     const body = await req.json()
     const images = (body?.images || []) as ImgObj[]
 
