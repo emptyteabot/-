@@ -53,6 +53,6 @@ export async function isPaid(product: PayProduct): Promise<boolean> {
 
 export function growthModeEnabled(): boolean {
   const v = process.env.GROWTH_MODE
-  if (!v) return true // default to growth-mode to avoid breaking current flow
+  if (!v) return false // default to production-mode
   return v === '1' || v.toLowerCase() === 'true'
 }

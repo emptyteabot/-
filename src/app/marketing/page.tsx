@@ -1,37 +1,71 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { trackGrowthEvent } from '@/lib/growth'
 
-const SCRIPTS = [
+type ProductType = 'soul' | 'fortune' | 'both'
+type ChannelType = 'xiaohongshu' | 'douyin' | 'wechat'
+
+type MarketingIdea = {
+  title: string
+  hook: string
+  outline: string[]
+  cta: string
+  hashtags: string[]
+}
+
+type MarketingPack = {
+  goal: string
+  today_tasks: string[]
+  post_ideas: MarketingIdea[]
+  dm_openers: string[]
+  comment_replies: string[]
+  kpi: {
+    uploads_target: string
+    completion_rate_target: string
+    lead_rate_target: string
+  }
+  raw_text?: string
+}
+
+const DEFAULT_SCRIPTS = [
   {
-    title: '小红书首评引导',
-    text: '别猜了，先看聊天证据。把3-8张连续截图发给我，2分钟看清关系信号。',
+    title: '首评引导',
+    text: '别猜了，先看聊天证据。把连续截图发来，我先给你试读版报告。',
   },
   {
     title: '私聊开场',
-    text: '你先发原图（别发缩略图），我先给你做一版试读报告，再决定要不要继续。',
+    text: '你先发原图（不要缩略图），我按结论-证据-动作给你做一版。',
   },
   {
     title: '成交收口',
-    text: '你现在最需要的不是继续猜，而是可执行下一步。报告我给你按“结论-证据-动作”整理好。',
+    text: '你现在需要的是可执行下一步，而不是继续内耗。',
   },
-]
-
-const TODAY_CHECKLIST = [
-  '发布 3 条内容（1 条案例、1 条方法、1 条观点）',
-  '每条内容至少回复 20 条评论',
-  '私信引导 10 人进入免费试读',
-  '记录：上传人数、报告完成人数、留资人数',
 ]
 
 export default function MarketingPage() {
   const [copied, setCopied] = useState<string>('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [pack, setPack] = useState<MarketingPack | null>(null)
+  const [product, setProduct] = useState<ProductType>('both')
+  const [channel, setChannel] = useState<ChannelType>('xiaohongshu')
+  const [vibe, setVibe] = useState('高转化、克制、直接、可执行')
 
   useEffect(() => {
     trackGrowthEvent({ name: 'marketing_open', page: '/marketing' })
   }, [])
+
+  const quickTasks = useMemo(() => {
+    if (pack?.today_tasks?.length) return pack.today_tasks
+    return [
+      '发布 3 条内容（案例、方法、观点各 1 条）',
+      '每条内容至少回复 20 条评论',
+      '私信引导 10 人进入试读报告',
+      '记录上传人数、报告完成人数、留资人数',
+    ]
+  }, [pack])
 
   async function copy(text: string, key: string) {
     try {
@@ -44,6 +78,26 @@ export default function MarketingPage() {
     }
   }
 
+  async function generatePack() {
+    setLoading(true)
+    setError('')
+    try {
+      trackGrowthEvent({ name: 'cta_click', page: '/marketing', detail: 'generate_pack' })
+      const res = await fetch('/api/marketing-pack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product, channel, vibe }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || '营销包生成失败')
+      setPack(data.pack || null)
+    } catch (e: any) {
+      setError(e?.message || '营销包生成失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-transparent px-4 pb-16 pt-10">
       <div className="app-shell space-y-6">
@@ -51,30 +105,60 @@ export default function MarketingPage() {
           <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Marketing Stage</div>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900 md:text-4xl">营销作战台</h1>
           <p className="mt-3 max-w-3xl text-sm text-slate-600 md:text-base">
-            目标是先拿稳定转化数据，再放大投流。今天只做可执行动作，不做无效忙碌。
+            现在是正式运营模式。先拿稳定转化数据，再放量。
           </p>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <select
+              value={product}
+              onChange={(e) => setProduct(e.target.value as ProductType)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+            >
+              <option value="both">双产品联动</option>
+              <option value="soul">情感法医</option>
+              <option value="fortune">AI 占卜</option>
+            </select>
+
+            <select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as ChannelType)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+            >
+              <option value="xiaohongshu">小红书</option>
+              <option value="douyin">抖音</option>
+              <option value="wechat">公众号</option>
+            </select>
+
+            <input
+              value={vibe}
+              onChange={(e) => setVibe(e.target.value)}
+              placeholder="营销风格"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+            />
+          </div>
+
           <div className="mt-5 flex flex-wrap gap-2">
+            <button onClick={generatePack} disabled={loading} className="btn-primary disabled:opacity-60">
+              {loading ? '生成中...' : '一键生成今日营销包'}
+            </button>
             <Link
               href="/soul-autopsy?src=marketing"
               onClick={() => trackGrowthEvent({ name: 'campaign_start', page: '/marketing', detail: 'soul-autopsy' })}
-              className="btn-primary"
+              className="btn-secondary"
             >
               启动情感法医转化
             </Link>
-            <Link href="/content-launderer?src=marketing" className="btn-secondary">
-              打开内容工厂
-            </Link>
-            <Link href="/growth" className="btn-secondary">
-              查看增长看板
-            </Link>
+            <Link href="/growth" className="btn-secondary">查看增长看板</Link>
+            <Link href="/" className="btn-secondary">返回首页</Link>
           </div>
+          {error ? <div className="mt-3 text-sm text-rose-600">{error}</div> : null}
         </header>
 
         <section className="grid gap-4 md:grid-cols-2">
           <div className="glass-card p-5">
             <h2 className="text-lg font-semibold text-slate-900">今日执行清单</h2>
             <div className="mt-3 space-y-2 text-sm text-slate-700">
-              {TODAY_CHECKLIST.map((item) => (
+              {quickTasks.map((item) => (
                 <div key={item} className="flex gap-2">
                   <span className="mt-0.5 text-emerald-600">●</span>
                   <span>{item}</span>
@@ -84,20 +168,19 @@ export default function MarketingPage() {
           </div>
 
           <div className="glass-card p-5">
-            <h2 className="text-lg font-semibold text-slate-900">7日目标</h2>
+            <h2 className="text-lg font-semibold text-slate-900">7日 KPI 目标</h2>
             <div className="mt-3 space-y-2 text-sm text-slate-700">
-              <div>上传截图人数：不少于 300</div>
-              <div>OCR 成功率：不少于 85%</div>
-              <div>报告完成率：不少于 70%</div>
-              <div>留资转化率：不少于 8%</div>
+              <div>上传截图人数：{pack?.kpi?.uploads_target || '300'}</div>
+              <div>报告完成率：{pack?.kpi?.completion_rate_target || '70%'}</div>
+              <div>留资转化率：{pack?.kpi?.lead_rate_target || '8%'}</div>
             </div>
           </div>
         </section>
 
         <section className="glass-card p-5">
-          <h2 className="text-lg font-semibold text-slate-900">可直接复制的话术</h2>
+          <h2 className="text-lg font-semibold text-slate-900">即用话术</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {SCRIPTS.map((s) => (
+            {DEFAULT_SCRIPTS.map((s) => (
               <div key={s.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-sm font-semibold text-slate-900">{s.title}</div>
                 <p className="mt-2 text-sm leading-6 text-slate-700">{s.text}</p>
@@ -112,12 +195,66 @@ export default function MarketingPage() {
           </div>
         </section>
 
-        <section className="glass-card p-5 text-sm text-slate-700">
-          <div className="font-semibold text-slate-900">执行原则</div>
-          <div className="mt-2">1. 先跑通“上传→报告→留资”闭环，再谈放量。</div>
-          <div>2. 每天只盯 4 个核心数据：上传、OCR成功、报告完成、留资。</div>
-          <div>3. 任何渠道文案都回到一个卖点：看证据，不猜测。</div>
-        </section>
+        {pack ? (
+          <section className="glass-card p-5">
+            <h2 className="text-lg font-semibold text-slate-900">自动营销包</h2>
+            <div className="mt-2 text-sm text-slate-700">{pack.goal}</div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              {pack.post_ideas?.map((idea, idx) => (
+                <article key={`${idea.title}-${idx}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-slate-900">{idea.title}</h3>
+                  <p className="mt-2 text-sm text-slate-700">{idea.hook}</p>
+                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                    {(idea.outline || []).map((p, i) => (
+                      <li key={`${idx}-${i}`}>- {p}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-slate-700">CTA: {idea.cta}</p>
+                  <p className="mt-2 text-xs text-slate-500">{(idea.hashtags || []).join(' ')}</p>
+                  <button
+                    onClick={() => copy(`${idea.title}\n${idea.hook}\n${(idea.outline || []).join('\n')}\nCTA:${idea.cta}`, `idea-${idx}`)}
+                    className="mt-3 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+                  >
+                    {copied === `idea-${idx}` ? '已复制' : '复制素材'}
+                  </button>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-semibold text-slate-900">私信开场</div>
+                <div className="mt-2 space-y-2 text-sm text-slate-700">
+                  {(pack.dm_openers || []).map((t, i) => (
+                    <div key={`dm-${i}`} className="flex items-start justify-between gap-2">
+                      <span>{t}</span>
+                      <button onClick={() => copy(t, `dm-${i}`)} className="text-xs text-slate-500 hover:text-slate-900">复制</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-semibold text-slate-900">评论区回复</div>
+                <div className="mt-2 space-y-2 text-sm text-slate-700">
+                  {(pack.comment_replies || []).map((t, i) => (
+                    <div key={`reply-${i}`} className="flex items-start justify-between gap-2">
+                      <span>{t}</span>
+                      <button onClick={() => copy(t, `reply-${i}`)} className="text-xs text-slate-500 hover:text-slate-900">复制</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {pack.raw_text ? (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-xs text-slate-500">查看原始输出</summary>
+                <pre className="mt-2 overflow-auto rounded-xl bg-slate-50 p-3 text-xs text-slate-600">{pack.raw_text}</pre>
+              </details>
+            ) : null}
+          </section>
+        ) : null}
       </div>
     </div>
   )

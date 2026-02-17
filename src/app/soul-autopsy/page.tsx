@@ -348,7 +348,7 @@ export default function SoulAutopsyPage() {
               <div className="mt-3 text-xs text-slate-500">预计耗时 30-90 秒，支持手机截图直接上传</div>
               <div className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-sm text-slate-600">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                免费公测中
+                正式运营中
               </div>
             </div>
 

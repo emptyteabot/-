@@ -5,7 +5,7 @@ import { trackGrowthEvent } from '@/lib/growth'
 
 export default function GrowthModeBanner() {
   const v = process.env.NEXT_PUBLIC_GROWTH_MODE
-  const growthMode = !v || v === '1' || v === 'true'
+  const growthMode = v === '1' || v === 'true'
   if (!growthMode) return null
 
   return (
