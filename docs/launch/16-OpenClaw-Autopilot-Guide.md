@@ -7,6 +7,8 @@
 ## 已提供脚本
 - `tools/marketing-autopilot.ps1`
 - `tools/marketing-autopilot.bat`
+- `tools/run-marketing-autopilot-feishu.bat`
+- `tools/setup-marketing-autopilot-task.ps1`
 
 ## 一键运行（Windows）
 ```bat
@@ -33,6 +35,13 @@ tools\marketing-autopilot.bat -SendViaOpenClaw -OpenClawChannel telegram -OpenCl
 2. OpenClaw 把摘要发到你团队频道。
 3. 人工审核后发布到小红书/抖音。
 4. 回看 `/growth` 数据，第二天迭代。
+
+## Windows 定时全自动执行
+```bat
+powershell -ExecutionPolicy Bypass -File tools\setup-marketing-autopilot-task.ps1 -RunTime 09:30
+```
+
+创建后会每天自动执行一次，并自动先跑一次做联调验证。
 
 ## 兜底机制
 - 当 `/api/marketing-pack` 因上游 AI 波动失败时，脚本会自动切换为本地兜底营销包，不会中断产出。
