@@ -16,3 +16,4 @@
 - `13-Role-Matrix-And-Owners.md`：多角色 owner 责任矩阵。
 - `14-Sprint-Execution-Board.md`：14 天冲刺执行看板。
 - `15-Marketing-Vibe-Playbook.md`：marketing vibe 实战手册。
+- `16-OpenClaw-Autopilot-Guide.md`：OpenClaw 自动营销操作指南（合规版）。

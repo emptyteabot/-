@@ -48,6 +48,7 @@ export default function MarketingPage() {
   const [copied, setCopied] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [degraded, setDegraded] = useState(false)
   const [pack, setPack] = useState<MarketingPack | null>(null)
   const [product, setProduct] = useState<ProductType>('both')
   const [channel, setChannel] = useState<ChannelType>('xiaohongshu')
@@ -81,6 +82,7 @@ export default function MarketingPage() {
   async function generatePack() {
     setLoading(true)
     setError('')
+    setDegraded(false)
     try {
       trackGrowthEvent({ name: 'cta_click', page: '/marketing', detail: 'generate_pack' })
       const res = await fetch('/api/marketing-pack', {
@@ -91,6 +93,7 @@ export default function MarketingPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || '营销包生成失败')
       setPack(data.pack || null)
+      setDegraded(Boolean(data?.degraded))
     } catch (e: any) {
       setError(e?.message || '营销包生成失败')
     } finally {
@@ -151,6 +154,11 @@ export default function MarketingPage() {
             <Link href="/growth" className="btn-secondary">查看增长看板</Link>
             <Link href="/" className="btn-secondary">返回首页</Link>
           </div>
+          {degraded ? (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              当前使用兜底营销包（AI 服务波动）。先执行，再按增长数据迭代。
+            </div>
+          ) : null}
           {error ? <div className="mt-3 text-sm text-rose-600">{error}</div> : null}
         </header>
 

@@ -23,6 +23,50 @@ function looksLikeRefusal(input: string): boolean {
   return keys.some((k) => t.includes(k))
 }
 
+function isValidOcrText(input: string): boolean {
+  const text = cleanOcrText(input)
+  return Boolean(text && text.length >= 6 && !looksLikeRefusal(text))
+}
+
+async function ocrOnce(normalized: string[]): Promise<string> {
+  const raw = await chatWithImages(
+    OCR_SYSTEM,
+    `Extract readable text from ${normalized.length} screenshot(s).`,
+    normalized,
+    { temperature: 0.1, maxTokens: 4096 }
+  )
+  return cleanOcrText(raw)
+}
+
+async function ocrWithSplitFallback(normalized: string[]): Promise<string> {
+  const errors: string[] = []
+
+  try {
+    const batchText = await ocrOnce(normalized)
+    if (isValidOcrText(batchText)) return batchText
+    errors.push('batch-empty-or-refusal')
+  } catch (err: any) {
+    errors.push(`batch:${String(err?.message || err)}`)
+  }
+
+  const pieces: string[] = []
+  for (const img of normalized) {
+    try {
+      const one = await ocrOnce([img])
+      if (isValidOcrText(one)) pieces.push(one)
+    } catch (err: any) {
+      errors.push(`single:${String(err?.message || err)}`)
+    }
+  }
+
+  const merged = pieces.join('\n').trim()
+  if (isValidOcrText(merged)) return merged
+
+  throw new Error(
+    `未识别到有效文字。请上传更清晰原图后重试。详情: ${errors.join(' | ')}`
+  )
+}
+
 export async function POST(req: NextRequest) {
   try {
     const limited = applyRateLimit(req, 'ocr', {
@@ -62,22 +106,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '截图格式不支持，请重新上传' }, { status: 400 })
     }
 
-    const raw = await chatWithImages(
-      OCR_SYSTEM,
-      `Extract readable text from ${normalized.length} screenshot(s).`,
-      normalized,
-      { temperature: 0.1, maxTokens: 4096 }
-    )
-
-    const text = cleanOcrText(raw)
-    if (!text || text.length < 8 || looksLikeRefusal(text)) {
-      return NextResponse.json({ error: '未识别到有效文字' }, { status: 422 })
-    }
+    const text = await ocrWithSplitFallback(normalized)
 
     return NextResponse.json({ text })
   } catch (err: any) {
     const msg = err?.message ? String(err.message) : '截图识别失败，请重试'
     console.error('OCR Error:', err)
-    return NextResponse.json({ error: msg, code: 'OCR_FAILED' }, { status: 500 })
+    const status = msg.includes('未识别到有效文字') ? 422 : 500
+    return NextResponse.json({ error: msg, code: 'OCR_FAILED' }, { status })
   }
 }

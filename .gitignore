@@ -9,6 +9,7 @@ node_modules/
 .next/
 dist/
 out/
+outputs/
 
 # OS generated files
 .DS_Store

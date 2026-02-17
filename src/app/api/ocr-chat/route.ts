@@ -34,6 +34,50 @@ function looksLikeRefusal(input: string): boolean {
   return keys.some((k) => t.includes(k))
 }
 
+function isValidOcrText(input: string): boolean {
+  const text = cleanOcrText(input)
+  return Boolean(text && text.length >= 8 && !looksLikeRefusal(text))
+}
+
+async function ocrOnce(normalizedImages: string[]): Promise<string> {
+  const raw = await chatWithImages(
+    OCR_PROMPT,
+    `Extract visible chat text from ${normalizedImages.length} screenshot(s).`,
+    normalizedImages,
+    { temperature: 0.1, maxTokens: 4096 }
+  )
+  return cleanOcrText(raw)
+}
+
+async function ocrWithSplitFallback(normalizedImages: string[]): Promise<string> {
+  const errors: string[] = []
+
+  try {
+    const batchText = await ocrOnce(normalizedImages)
+    if (isValidOcrText(batchText)) return batchText
+    errors.push('batch-empty-or-refusal')
+  } catch (err: any) {
+    errors.push(`batch:${String(err?.message || err)}`)
+  }
+
+  const pieces: string[] = []
+  for (const img of normalizedImages) {
+    try {
+      const one = await ocrOnce([img])
+      if (isValidOcrText(one)) pieces.push(one)
+    } catch (err: any) {
+      errors.push(`single:${String(err?.message || err)}`)
+    }
+  }
+
+  const merged = pieces.join('\n').trim()
+  if (isValidOcrText(merged)) return merged
+
+  throw new Error(
+    `未识别到有效聊天文字。请上传更清晰的连续聊天截图（建议3-8张原图）。详情: ${errors.join(' | ')}`
+  )
+}
+
 export async function POST(req: NextRequest) {
   try {
     const limited = applyRateLimit(req, 'ocr-chat', {
@@ -78,23 +122,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const raw = await chatWithImages(
-      OCR_PROMPT,
-      `Extract visible chat text from ${normalizedImages.length} screenshot(s).`,
-      normalizedImages,
-      { temperature: 0.1, maxTokens: 4096 }
-    )
-
-    const chatText = cleanOcrText(raw)
-
-    if (!chatText || chatText.length < 12 || looksLikeRefusal(chatText)) {
-      return NextResponse.json({ error: '未识别到有效聊天文字' }, { status: 422 })
-    }
+    const chatText = await ocrWithSplitFallback(normalizedImages)
 
     return NextResponse.json({ chatText })
   } catch (err: any) {
     const msg = err?.message ? String(err.message) : '截图识别失败，请重试'
     console.error('OCR Error:', err)
-    return NextResponse.json({ error: msg, code: 'OCR_CHAT_FAILED' }, { status: 500 })
+    const status = msg.includes('未识别到有效聊天文字') ? 422 : 500
+    return NextResponse.json({ error: msg, code: 'OCR_CHAT_FAILED' }, { status })
   }
 }
