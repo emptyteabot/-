@@ -13,3 +13,6 @@
 - `10-Acceptance-GoLive.md`：验收与发布工作文档。
 - `11-Marketing-GTM.md`：营销与市场阶段工作文档。
 - `12-MultiAgent-Collaboration.md`：多角色并行协作机制。
+- `13-Role-Matrix-And-Owners.md`：多角色 owner 责任矩阵。
+- `14-Sprint-Execution-Board.md`：14 天冲刺执行看板。
+- `15-Marketing-Vibe-Playbook.md`：marketing vibe 实战手册。
