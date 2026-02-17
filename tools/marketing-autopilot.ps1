@@ -59,6 +59,66 @@ function Build-Summary([object]$Pack, [string]$ProductName, [string]$ChannelName
   return $text
 }
 
+function Repair-Mojibake([string]$Text) {
+  if ([string]::IsNullOrWhiteSpace($Text)) { return $Text }
+  if ($Text -match '[\u4e00-\u9fff]') { return $Text }
+  if ($Text -notmatch '[ÃÂâäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]') { return $Text }
+
+  $latin1 = [System.Text.Encoding]::GetEncoding(28591)
+  try {
+    $bytes = $latin1.GetBytes($Text)
+    $fixed = [System.Text.Encoding]::UTF8.GetString($bytes)
+    if ($fixed -match '[\u4e00-\u9fff]') { return $fixed }
+  } catch {
+    # keep original text
+  }
+  return $Text
+}
+
+function Repair-Value([object]$Value) {
+  if ($null -eq $Value) { return $null }
+
+  if ($Value -is [string]) {
+    return Repair-Mojibake -Text $Value
+  }
+
+  if ($Value -is [System.Collections.IDictionary]) {
+    $out = @{}
+    foreach ($k in $Value.Keys) {
+      $out[$k] = Repair-Value -Value $Value[$k]
+    }
+    return [PSCustomObject]$out
+  }
+
+  if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
+    $arr = @()
+    foreach ($item in $Value) {
+      $arr += ,(Repair-Value -Value $item)
+    }
+    return $arr
+  }
+
+  if ($Value -is [pscustomobject]) {
+    $out = @{}
+    foreach ($p in $Value.PSObject.Properties) {
+      $out[$p.Name] = Repair-Value -Value $p.Value
+    }
+    return [PSCustomObject]$out
+  }
+
+  return $Value
+}
+
+function Invoke-JsonPostCompat([string]$Url, [object]$Body, [int]$TimeoutSec = 70) {
+  $json = $Body | ConvertTo-Json -Depth 16
+  try {
+    $resp = Invoke-RestMethod -Method Post -Uri $Url -ContentType "application/json; charset=utf-8" -Body $json -TimeoutSec $TimeoutSec
+    return (Repair-Value -Value $resp)
+  } catch {
+    throw
+  }
+}
+
 function New-FallbackPack([string]$ProductName, [string]$ChannelName, [string]$Reason, [string]$Tone) {
   $tags = @('#情感法医', '#聊天记录分析', '#关系决策')
   if ($ChannelName -eq 'douyin') { $tags = @('#情感', '#关系建议', '#聊天记录分析') }
@@ -129,7 +189,7 @@ $apiUrl = "$BaseUrl/api/marketing-pack"
 $resp = $null
 $pack = $null
 try {
-  $resp = Invoke-RestMethod -Method Post -Uri $apiUrl -ContentType "application/json" -Body ($payload | ConvertTo-Json)
+  $resp = Invoke-JsonPostCompat -Url $apiUrl -Body $payload
   if ($resp -and $resp.ok -and $resp.pack) {
     $pack = $resp.pack
   } else {
