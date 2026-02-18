@@ -32,15 +32,15 @@ type MarketingPack = {
 const DEFAULT_SCRIPTS = [
   {
     title: '首评引导',
-    text: '别猜了，先看聊天证据。把连续截图发来，我先给你试读版报告。',
+    text: '先别急着下结论，你把连续聊天截图发我，我先给你做一版试读。',
   },
   {
     title: '私聊开场',
-    text: '你先发原图（不要缩略图），我按结论-证据-动作给你做一版。',
+    text: '你先发原图（别发压缩图），我会直接告诉你：结论、证据、下一步怎么聊。',
   },
   {
     title: '成交收口',
-    text: '你现在需要的是可执行下一步，而不是继续内耗。',
+    text: '你现在最需要的不是继续猜，是一条今晚就能执行的下一步。',
   },
 ]
 
@@ -52,7 +52,7 @@ export default function MarketingPage() {
   const [pack, setPack] = useState<MarketingPack | null>(null)
   const [product, setProduct] = useState<ProductType>('both')
   const [channel, setChannel] = useState<ChannelType>('xiaohongshu')
-  const [vibe, setVibe] = useState('高转化、克制、直接、可执行')
+  const [vibe, setVibe] = useState('像真人在讲自己的经历，口语化，有细节，不端着')
 
   useEffect(() => {
     trackGrowthEvent({ name: 'marketing_open', page: '/marketing' })
@@ -135,9 +135,12 @@ export default function MarketingPage() {
             <input
               value={vibe}
               onChange={(e) => setVibe(e.target.value)}
-              placeholder="营销风格"
+              placeholder="活人感风格"
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
             />
+          </div>
+          <div className="mt-2 text-xs text-slate-500">
+            活人感要点：具体场景、具体原话、短句口语、少一点“运营黑话”。
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
