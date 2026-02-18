@@ -25,6 +25,8 @@ tools\marketing-autopilot.bat -Product both -Channel xiaohongshu -Vibe "高转�
 tools\marketing-autopilot.bat -SendViaOpenClaw -OpenClawChannel telegram -OpenClawTarget "@your_chat_id"
 ```
 
+> Feishu 场景建议显式填写 `-OpenClawTarget`，确保分发到你指定的会话。
+
 ## 输出文件位置
 - `outputs/marketing/{timestamp}/marketing-pack.json`
 - `outputs/marketing/{timestamp}/marketing-pack.md`

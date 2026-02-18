@@ -175,6 +175,42 @@ function New-FallbackPack([string]$ProductName, [string]$ChannelName, [string]$R
   }
 }
 
+function Resolve-OpenClawTarget([string]$ChannelName) {
+  if ($ChannelName -ne 'feishu') { return '' }
+  try {
+    $raw = (& openclaw status --json --no-color 2>$null | Out-String)
+    if (-not $raw) { return '' }
+    $trim = $raw.Trim()
+    if (-not $trim) { return '' }
+
+    $jsonText = $trim
+    if ($trim[0] -ne '{') {
+      $start = $trim.IndexOf('{')
+      $end = $trim.LastIndexOf('}')
+      if ($start -lt 0 -or $end -le $start) { return '' }
+      $jsonText = $trim.Substring($start, $end - $start + 1)
+    }
+
+    $status = $jsonText | ConvertFrom-Json
+    $recent = @($status.sessions.recent)
+    if ($recent.Count -eq 0) { return '' }
+
+    $dmSessions = @(
+      $recent | Where-Object {
+        $_.key -and $_.key -like 'agent:*:feishu:dm:*'
+      } | Sort-Object -Property updatedAt -Descending
+    )
+    if ($dmSessions.Count -eq 0) { return '' }
+
+    $k = [string]$dmSessions[0].key
+    $idx = $k.LastIndexOf(':')
+    if ($idx -lt 0 -or $idx -ge ($k.Length - 1)) { return '' }
+    return $k.Substring($idx + 1)
+  } catch {
+    return ''
+  }
+}
+
 Write-Host "== Marketing Autopilot =="
 Write-Host "BaseUrl: $BaseUrl"
 Write-Host "Product: $Product | Channel: $Channel"
@@ -281,7 +317,14 @@ if ($rows.Count -gt 0) {
 
 if ($SendViaOpenClaw) {
   if (-not $OpenClawTarget) {
-    throw "OpenClawTarget is required when SendViaOpenClaw is enabled"
+    $autoTarget = Resolve-OpenClawTarget -ChannelName $OpenClawChannel
+    if ($autoTarget) {
+      $OpenClawTarget = $autoTarget
+      Write-Host "Resolved OpenClaw target: $OpenClawTarget"
+    }
+  }
+  if (-not $OpenClawTarget) {
+    throw "OpenClawTarget is required (or let script auto-resolve a recent DM target by sending one message to the bot first)."
   }
 
   $summary = Build-Summary -Pack $pack -ProductName $Product -ChannelName $Channel
