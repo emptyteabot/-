@@ -2,7 +2,7 @@
   [string]$BaseUrl = "https://yuejian-production.up.railway.app",
   [ValidateSet("soul", "fortune", "both")] [string]$Product = "both",
   [ValidateSet("xiaohongshu", "douyin", "wechat")] [string]$Channel = "xiaohongshu",
-  [string]$Vibe = "high-conversion, direct, actionable",
+  [string]$Vibe = "闺蜜口吻，像真人在讲经历，短句有细节，不端着",
   [switch]$SendViaOpenClaw,
   [string]$OpenClawChannel = "telegram",
   [string]$OpenClawTarget = "",
@@ -120,7 +120,7 @@ function Invoke-JsonPostCompat([string]$Url, [object]$Body, [int]$TimeoutSec = 7
 }
 
 function New-FallbackPack([string]$ProductName, [string]$ChannelName, [string]$Reason, [string]$Tone) {
-  $tags = @('#情感法医', '#聊天记录分析', '#关系决策')
+  $tags = @('#关系透视', '#聊天记录分析', '#关系决策')
   if ($ChannelName -eq 'douyin') { $tags = @('#情感', '#关系建议', '#聊天记录分析') }
   if ($ChannelName -eq 'wechat') { $tags = @('#关系复盘', '#沟通', '#情感决策') }
 

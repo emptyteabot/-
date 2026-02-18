@@ -5,40 +5,16 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
-type PayProduct = 'soul' | 'fortune-tarot' | 'fortune-daily' | 'launderer'
+type PayProduct = 'soul'
 
 const PRODUCTS: Record<PayProduct, { name: string; price: string; originalPrice: string; desc: string; redirect: string; features: string[] }> = {
   soul: {
-    name: '情感法医报告',
-    price: '9.9',
-    originalPrice: '49.9',
-    desc: '聊天记录深度分析，输出结论与行动建议。',
-    redirect: '/soul-autopsy',
-    features: ['关系诊断', '互动热度', '风险信号', '行动建议'],
-  },
-  'fortune-tarot': {
-    name: 'AI 塔罗解读',
+    name: '关系透视报告',
     price: '19.9',
-    originalPrice: '99',
-    desc: '三牌阵解读，适合关系与决策问题。',
-    redirect: '/ai-fortune',
-    features: ['三牌结果', '核心判断', '行动建议'],
-  },
-  'fortune-daily': {
-    name: '每日运势详批',
-    price: '9.9',
-    originalPrice: '39.9',
-    desc: '生日输入后生成当日感情/事业/财运建议。',
-    redirect: '/ai-fortune',
-    features: ['感情建议', '事业建议', '财运建议'],
-  },
-  launderer: {
-    name: '内容改写工具',
-    price: '599',
-    originalPrice: '1999',
-    desc: '面向小红书/抖音的内容改写与标题生成。',
-    redirect: '/content-launderer',
-    features: ['改写', '生成', '标题批量'],
+    originalPrice: '49.9',
+    desc: '聊天记录深度分析，输出结论、证据和今晚就能用的话术。',
+    redirect: '/soul-autopsy',
+    features: ['关系诊断', '关键证据', '风险信号', '今晚三句话', '行动建议'],
   },
 }
 

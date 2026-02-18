@@ -16,6 +16,8 @@ export type GrowthEventName =
   | 'lead_submit'
   | 'lead_success'
   | 'lead_fail'
+  | 'unlock_success'
+  | 'unlock_fail'
 
 export interface GrowthEvent {
   name: GrowthEventName

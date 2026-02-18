@@ -201,7 +201,7 @@ export async function chatWithImages(
           temperature: options?.temperature ?? 0.2,
           max_tokens: options?.maxTokens ?? 4096,
         }),
-        toMs(process.env.AI_OCR_TIMEOUT_MS, 30000),
+        toMs(process.env.AI_OCR_TIMEOUT_MS, 45000),
         `${t.label}(${t.model})`
       )
 

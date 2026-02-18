@@ -40,18 +40,42 @@ export async function POST(req: NextRequest) {
 
     const stats = generateChatStats(messages)
 
+    // Prevent "toy" outputs: too little signal leads to low trust and bad retention.
+    const participants = Object.entries(stats.messagesBySender || {})
+    const minPerSide = participants.length ? Math.min(...participants.map(([, n]) => Number(n) || 0)) : 0
+    if (stats.totalMessages < 12 || participants.length < 2 || minPerSide < 3) {
+      return NextResponse.json(
+        { error: '聊天内容太少，无法给出可信结论。请上传更连续的对话（建议至少 3-8 张截图，或 30 条以上消息）。' },
+        { status: 422 }
+      )
+    }
+
+    const paid = growthModeEnabled() || (await isPaid('soul'))
+
     const systemPrompt = [
       '你是一位冷静、克制、直接的关系分析师。',
       '请根据聊天统计输出结构化结论，不要空话，不要恐吓。',
-      '输出 Markdown，必须包含以下小节：',
-      '## 关系诊断',
-      '## 关键证据',
-      '## 风险信号',
-      '## 行动建议（3条）',
-      '所有建议要可执行、低成本、可立即开始。',
+      '输出 Markdown。',
+      paid
+        ? [
+            '必须包含以下小节：',
+            '## 关系诊断（1句结论 + 1句解释）',
+            '## 关键证据（3-6条，写清“指标 -> 含义”）',
+            '## 风险信号（3条）',
+            '## 今晚可复制的话术（3句，直接可发）',
+            '## 行动建议（3条）',
+            '所有建议要可执行、低成本、可立即开始。',
+            '话术要克制、不过度讨好、不试图操控对方。',
+          ].join('\n')
+        : [
+            '这是试读版：给到结论 + 证据 + 1条行动建议即可。',
+            '必须包含以下小节：',
+            '## 关系诊断',
+            '## 关键证据（最多3条）',
+            '## 行动建议（1条）',
+            '结尾用一句话引导解锁完整版本（不出现价格）。',
+          ].join('\n'),
     ].join('\n')
-
-    const paid = growthModeEnabled() || (await isPaid('soul'))
     const summary = {
       participants: Object.keys(stats.messagesBySender),
       totalMessages: stats.totalMessages,
@@ -67,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     const userMessage = paid
       ? `请基于以下统计信息，生成完整关系分析报告：\n\n${JSON.stringify(summary, null, 2)}`
-      : `请基于以下统计信息，生成试读版关系分析报告（600-900字）：\n\n${JSON.stringify(summary, null, 2)}\n\n要求：\n1) 只输出报告正文。\n2) 结尾给出一句“如需完整版本可继续解锁”的引导，不提价格。`
+      : `请基于以下统计信息，生成试读版关系分析报告（350-550字）：\n\n${JSON.stringify(summary, null, 2)}`
 
     const report = await withApiTimeout(
       chatCompletion(systemPrompt, userMessage, {
@@ -75,7 +99,7 @@ export async function POST(req: NextRequest) {
         maxTokens: paid ? 2200 : 1000,
         preferFast: true,
       }),
-      25000
+      32000
     )
 
     return NextResponse.json({

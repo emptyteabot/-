@@ -65,7 +65,7 @@ if not exist "config.toml" (
         echo.
         echo [llm]
         echo provider = "openai"
-        echo openai_api_key = "sk-9b1fb5be6f18465690e499e2d23f37ac"
+        echo openai_api_key = "YOUR_API_KEY"
         echo openai_base_url = "https://api.deepseek.com/v1"
         echo openai_model_name = "deepseek-chat"
     ) > config.toml

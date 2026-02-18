@@ -46,6 +46,10 @@ tmp/
 .nyc_output
 coverage/
 
+# Local scratch files
+tmp-*.txt
+tmp-*.html
+
 # Vercel
 .vercel/
 

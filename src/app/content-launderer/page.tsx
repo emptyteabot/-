@@ -17,7 +17,7 @@ const PLATFORMS: Array<{ id: Platform; label: string }> = [
 
 const PROMO_OPTIONS: Array<{ id: PromoTarget; label: string }> = [
   { id: 'both', label: '双产品联动' },
-  { id: 'soul', label: '情感法医' },
+  { id: 'soul', label: '关系透视' },
   { id: 'fortune', label: 'AI 占卜' },
   { id: 'none', label: '不植入' },
 ]
@@ -127,7 +127,6 @@ export default function ContentLaundererPage() {
             <p className="mt-2 text-sm text-slate-600">一键改写、主题创作、批量标题，直接用于你的小红书/抖音投放。</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/marketing" className="btn-secondary px-3 py-2">营销作战台</Link>
             <Link href="/" className="btn-secondary px-3 py-2">返回首页</Link>
           </div>
         </header>

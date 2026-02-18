@@ -54,7 +54,7 @@ export default function OverviewPage() {
             <Link href="/" className="btn-primary">打开首页</Link>
             <Link href="/growth" className="btn-secondary">打开增长看板</Link>
             <Link href="/marketing" className="btn-secondary">打开营销作战台</Link>
-            <Link href="/soul-autopsy" className="btn-secondary">打开情感法医</Link>
+            <Link href="/soul-autopsy" className="btn-secondary">打开关系透视</Link>
             <Link href="/ai-fortune" className="btn-secondary">打开 AI 占卜</Link>
           </div>
         </div>

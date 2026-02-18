@@ -115,18 +115,24 @@ function parseUnstructuredChatFallback(text: string): ChatMessage[] {
   const messages: ChatMessage[] = []
   const base = new Date()
   base.setHours(12, 0, 0, 0)
-  let idx = 0
+  const baseDate = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`
   let nextIsMe = false
+  let currentTime: string | null = null
 
   for (const line of lines) {
     if (!line) continue
-    if (/^\d{1,2}:\d{2}$/.test(line)) continue
+    const timeOnly = line.match(/^(\d{1,2}):(\d{2})$/)
+    if (timeOnly) {
+      currentTime = `${timeOnly[1].padStart(2, '0')}:${timeOnly[2]}`
+      continue
+    }
 
     let sender = nextIsMe ? '我' : '对方'
     let content = line
 
     const meMatch = line.match(/^(我|me|Me|ME|自己|本人)\s*[:：]\s*(.+)$/i)
     const otherMatch = line.match(/^(对方|ta|TA|Ta|他|她|好友|朋友)\s*[:：]\s*(.+)$/i)
+    const nameMatch = line.match(/^([\u4e00-\u9fa5A-Za-z0-9_]{1,12})\s*[:：]\s*(.+)$/)
 
     if (meMatch) {
       sender = '我'
@@ -134,12 +140,16 @@ function parseUnstructuredChatFallback(text: string): ChatMessage[] {
     } else if (otherMatch) {
       sender = '对方'
       content = otherMatch[2].trim()
+    } else if (nameMatch) {
+      sender = nameMatch[1].trim()
+      content = nameMatch[2].trim()
     }
 
     if (!content) continue
 
-    const ts = new Date(base.getTime() + idx * 90_000)
-    const timestamp = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}-${String(ts.getDate()).padStart(2, '0')} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}:${String(ts.getSeconds()).padStart(2, '0')}`
+    // If no reliable per-message timestamp exists (common in OCR output),
+    // do NOT fabricate reply delays; keep date-only or use the nearest visible time marker.
+    const timestamp = currentTime ? `${baseDate} ${currentTime}:00` : baseDate
 
     messages.push({
       timestamp,
@@ -148,7 +158,6 @@ function parseUnstructuredChatFallback(text: string): ChatMessage[] {
       type: detectMessageType(content),
     })
 
-    idx += 1
     nextIsMe = !nextIsMe
   }
 

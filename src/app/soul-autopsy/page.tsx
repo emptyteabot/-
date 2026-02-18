@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import ShareButton from '@/components/ShareButton'
 import { trackGrowthEvent } from '@/lib/growth'
@@ -10,6 +10,7 @@ type AnalysisStage = 'upload' | 'analyzing' | 'report'
 interface ReportData {
   report: string
   stats: any
+  locked?: boolean
 }
 
 export default function SoulAutopsyPage() {
@@ -24,6 +25,11 @@ export default function SoulAutopsyPage() {
   const [uploadMode, setUploadMode] = useState<'text' | 'screenshot'>('screenshot')
   const [screenshots, setScreenshots] = useState<string[]>([])
   const [ocrLoading, setOcrLoading] = useState(false)
+  const [orderId, setOrderId] = useState('')
+  const [unlockCode, setUnlockCode] = useState('')
+  const [unlocking, setUnlocking] = useState(false)
+  const [unlockError, setUnlockError] = useState('')
+  const [showUnlock, setShowUnlock] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imgInputRef = useRef<HTMLInputElement>(null)
   const reportRef = useRef<HTMLDivElement>(null)
@@ -40,6 +46,16 @@ export default function SoulAutopsyPage() {
     '正在润色措辞，真相可能有点扎心...',
     '报告已生成 💜',
   ]
+
+  const RESUME_KEY = 'yuejian_soul_last_chat_text'
+  const RESUME_TS_KEY = 'yuejian_soul_last_chat_ts'
+
+  function ensureOrderId() {
+    if (orderId) return orderId
+    const id = `SL${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+    setOrderId(id)
+    return id
+  }
 
   async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 90000) {
     const controller = new AbortController()
@@ -160,15 +176,12 @@ export default function SoulAutopsyPage() {
     setError('')
     setStage('analyzing')
     setProgress(3)
-    setProgressText('正在准备分批识别...')
+    setProgressText('正在准备识别截图文字...')
     trackGrowthEvent({ name: 'ocr_start', page: '/soul-autopsy', detail: `${screenshots.length}` })
     try {
-      const batchSize = 2
-      const batches: string[][] = []
-      for (let i = 0; i < screenshots.length; i += batchSize) {
-        batches.push(screenshots.slice(i, i + batchSize))
-      }
-      const batchCount = batches.length
+      const OCR_CONCURRENCY = 2
+      // OCR route itself may do retries / split fallback; client timeout must allow that.
+      const OCR_TIMEOUT_MS = 100_000
 
       const toOcrImages = (items: string[]) =>
         items
@@ -178,20 +191,29 @@ export default function SoulAutopsyPage() {
           })
           .filter(Boolean)
 
-      const ocrOneBatch = async (items: string[]) => {
-        let res = await fetchWithTimeout('/api/ocr-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ images: items }),
-        }, 30000)
-
-        if (!res.ok) {
-          const images = toOcrImages(items)
-          res = await fetchWithTimeout('/api/ocr', {
+      const ocrOne = async (dataUrl: string): Promise<string> => {
+        // Prefer OCR-chat (better for parsing "我/对方") and fallback to generic OCR.
+        let res = await fetchWithTimeout(
+          '/api/ocr-chat',
+          {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images }),
-          }, 25000)
+            body: JSON.stringify({ images: [dataUrl] }),
+          },
+          OCR_TIMEOUT_MS
+        )
+
+        if (!res.ok) {
+          const images = toOcrImages([dataUrl])
+          res = await fetchWithTimeout(
+            '/api/ocr',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ images }),
+            },
+            OCR_TIMEOUT_MS
+          )
         }
 
         if (!res.ok) {
@@ -200,40 +222,44 @@ export default function SoulAutopsyPage() {
         }
 
         const data = await res.json()
-        let text = String(data.chatText || data.text || '').trim()
-        if (text.length >= 12) return text
-
-        const images = toOcrImages(items)
-        const fallback = await fetchWithTimeout('/api/ocr', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ images }),
-        }, 25000)
-        if (!fallback.ok) return text
-        const fd = await fallback.json().catch(() => ({}))
-        return String(fd.text || '').trim()
+        const text = String(data.chatText || data.text || '').trim()
+        return text
       }
 
-      const texts: string[] = []
-      for (let i = 0; i < batchCount; i++) {
-        const batch = batches[i]
-        setProgressText(`正在识别第 ${i + 1}/${batchCount} 批截图...`)
-        setProgress(6 + Math.round((i / batchCount) * 40))
+      const n = screenshots.length
+      const results: string[] = new Array(n).fill('')
+      const errors: string[] = []
+      let done = 0
 
+      const runOne = async (idx: number) => {
         try {
-          const chunkText = await ocrOneBatch(batch)
-          if (chunkText.length >= 8) {
-            texts.push(chunkText)
-          }
+          const text = await ocrOne(screenshots[idx])
+          if (text.length >= 6) results[idx] = text
         } catch (e: any) {
-          trackGrowthEvent({ name: 'ocr_fail', page: '/soul-autopsy', detail: `#${i + 1}: ${String(e?.message || 'error')}` })
-          throw e
+          const msg = String(e?.message || 'error')
+          errors.push(`#${idx + 1}:${msg}`)
+          trackGrowthEvent({ name: 'ocr_fail', page: '/soul-autopsy', detail: `#${idx + 1}: ${msg}` })
+        } finally {
+          done += 1
+          setProgressText(`正在识别第 ${done}/${n} 张截图...`)
+          setProgress(6 + Math.round((done / n) * 40))
         }
       }
 
-      const text = texts.join('\n')
+      const queue = Array.from({ length: n }, (_, i) => i)
+      const workers = Array.from({ length: Math.min(OCR_CONCURRENCY, n) }, async () => {
+        while (queue.length) {
+          const idx = queue.shift()
+          if (typeof idx !== 'number') return
+          await runOne(idx)
+        }
+      })
+      await Promise.all(workers)
+
+      const text = results.filter(Boolean).join('\n')
       if (text.trim().length < 12) {
-        throw new Error('未识别到有效文字。请上传更清晰聊天截图（原图、非缩略图、至少3张连续对话）。')
+        const detail = errors.length ? `（详情: ${errors.slice(0, 3).join(' | ')}）` : ''
+        throw new Error(`未识别到有效聊天文字。请上传更清晰的连续聊天截图（建议 3-8 张原图）。${detail}`)
       }
 
       setProgress(52)
@@ -247,7 +273,7 @@ export default function SoulAutopsyPage() {
       setOcrLoading(false)
       setStage('upload')
       const msg = err?.name === 'AbortError'
-        ? 'OCR 超时了（截图较多或网络较慢）。系统已自动分批识别，建议改传更清晰原图后重试。'
+        ? 'OCR 超时了（截图较多或网络较慢）。建议减少单次截图数量或换更清晰原图后重试。'
         : (err?.message || 'OCR failed')
       trackGrowthEvent({ name: 'ocr_fail', page: '/soul-autopsy', detail: msg })
       setError(msg)
@@ -264,6 +290,13 @@ export default function SoulAutopsyPage() {
   }
 
   const startAnalysisWithText = async (text: string, startProgress = 0) => {
+    try {
+      sessionStorage.setItem(RESUME_KEY, text)
+      sessionStorage.setItem(RESUME_TS_KEY, String(Date.now()))
+    } catch {
+      // ignore
+    }
+
     trackGrowthEvent({ name: 'analysis_start', page: '/soul-autopsy', detail: uploadMode })
     setStage('analyzing')
     setProgress(startProgress)
@@ -297,6 +330,14 @@ export default function SoulAutopsyPage() {
       }
 
       const data = await res.json()
+      if (!data?.locked) {
+        try {
+          sessionStorage.removeItem(RESUME_KEY)
+          sessionStorage.removeItem(RESUME_TS_KEY)
+        } catch {
+          // ignore
+        }
+      }
       setProgress(100)
       trackGrowthEvent({ name: 'analysis_done', page: '/soul-autopsy', detail: 'ok' })
       setProgressText('报告已生成 💜')
@@ -317,6 +358,76 @@ export default function SoulAutopsyPage() {
     }
   }
 
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // ignore
+    }
+  }
+
+  async function unlockAndGenerateFull() {
+    setUnlockError('')
+    const code = unlockCode.trim()
+    if (!code) return setUnlockError('请输入解锁码')
+
+    setUnlocking(true)
+    try {
+      const res = await fetch('/api/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: 'soul', code, orderId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || '解锁失败')
+
+      trackGrowthEvent({ name: 'unlock_success', page: '/soul-autopsy', detail: 'soul' })
+      setShowUnlock(false)
+      setUnlockCode('')
+
+      const text = (fileContent || '').trim() || String(sessionStorage.getItem(RESUME_KEY) || '')
+      if (!text.trim()) throw new Error('未找到聊天文本，请返回重新上传')
+
+      startAnalysisWithText(text, 22)
+    } catch (e: any) {
+      setUnlockError(String(e?.message || '解锁失败'))
+      trackGrowthEvent({ name: 'unlock_fail', page: '/soul-autopsy', detail: String(e?.message || 'error') })
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
+  useEffect(() => {
+    if (showUnlock) ensureOrderId()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showUnlock])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      if (sp.get('resume') !== '1') return
+
+      const ts = Number(sessionStorage.getItem(RESUME_TS_KEY) || '0')
+      if (ts && Date.now() - ts > 2 * 60 * 60 * 1000) return
+
+      const text = String(sessionStorage.getItem(RESUME_KEY) || '')
+      if (!text.trim()) return
+
+      sp.delete('resume')
+      const qs = sp.toString()
+      window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''))
+
+      setUploadMode('text')
+      setFileName('恢复的聊天记录')
+      setFileContent(text)
+      startAnalysisWithText(text, 18)
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <div className="min-h-screen bg-transparent text-slate-900">
       {/* Header */}
@@ -329,7 +440,7 @@ export default function SoulAutopsyPage() {
             返回
           </Link>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold tracking-wide text-slate-900">AI 情感法医</span>
+            <span className="text-sm font-semibold tracking-wide text-slate-900">AI 关系透视</span>
           </div>
         </div>
       </header>
@@ -340,7 +451,7 @@ export default function SoulAutopsyPage() {
         {stage === 'upload' && (
           <div className="max-w-2xl mx-auto animate-fade-in-up">
             <div className="text-center mb-12">
-              <div className="mb-4 text-xs uppercase tracking-[0.2em] text-slate-400">Soul Autopsy</div>
+              <div className="mb-4 text-xs uppercase tracking-[0.2em] text-slate-400">Relationship Lens</div>
               <h1 className="text-4xl md:text-5xl font-black mb-3">
                 <span className="text-gradient-soul">感情透视报告</span>
               </h1>
@@ -553,6 +664,83 @@ export default function SoulAutopsyPage() {
                   生成时间: {new Date().toLocaleString('zh-CN')}
                 </p>
               </div>
+
+              {report.locked ? (
+                <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">这是试读版</div>
+                      <div className="mt-1 text-xs text-amber-900/80">
+                        解锁完整版可拿到：更完整的证据解释 + 今晚可复制的话术 3 句 + 3 条行动建议。
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => {
+                          setShowUnlock(true)
+                          ensureOrderId()
+                        }}
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        解锁完整版 ¥19.9
+                      </button>
+                      <Link
+                        href="/pay?product=soul"
+                        className="rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100"
+                      >
+                        去支付页
+                      </Link>
+                    </div>
+                  </div>
+
+                  {showUnlock ? (
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div className="rounded-xl border border-amber-200 bg-white p-4">
+                        <div className="text-xs text-slate-500">订单号（付款后发给客服用）</div>
+                        <div className="mt-1 flex items-center justify-between gap-2">
+                          <div className="font-mono text-sm text-slate-900">{orderId || '...'}</div>
+                          <button
+                            onClick={() => orderId && copyToClipboard(orderId)}
+                            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                          >
+                            复制
+                          </button>
+                        </div>
+                        <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-center">
+                          <img src="/qr-pay.jpg" alt="支付二维码" className="mx-auto h-[210px] w-[210px] rounded-lg" />
+                        </div>
+                        <div className="mt-2 text-xs text-slate-600">
+                          扫码支付后，输入你收到的解锁码（格式：订单号.验证码）。
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-amber-200 bg-white p-4">
+                        <div className="text-xs text-slate-500">输入解锁码</div>
+                        <input
+                          value={unlockCode}
+                          onChange={(e) => setUnlockCode(e.target.value)}
+                          placeholder="例如 SLXXXX... . a1b2c3d4e5"
+                          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+                        />
+                        {unlockError ? <div className="mt-2 text-xs text-rose-600">{unlockError}</div> : null}
+                        <button
+                          onClick={unlockAndGenerateFull}
+                          disabled={unlocking}
+                          className="mt-3 w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                        >
+                          {unlocking ? '验证中...' : '验证并生成完整版'}
+                        </button>
+                        <button
+                          onClick={() => setShowUnlock(false)}
+                          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                        >
+                          收起
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               {report.stats && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

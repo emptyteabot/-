@@ -32,16 +32,23 @@ type MarketingPack = {
 const DEFAULT_SCRIPTS = [
   {
     title: '首评引导',
-    text: '先别急着下结论，你把连续聊天截图发我，我先给你做一版试读。',
+    text: '先别急着下结论，发我3-8张连续截图，我先给你试读版。',
   },
   {
     title: '私聊开场',
-    text: '你先发原图（别发压缩图），我会直接告诉你：结论、证据、下一步怎么聊。',
+    text: '你先发原图（别压缩），我直接给你：结论、证据、今晚怎么聊。',
   },
   {
     title: '成交收口',
-    text: '你现在最需要的不是继续猜，是一条今晚就能执行的下一步。',
+    text: '你现在最需要的不是继续猜，是一句今晚就能发出去的话。',
   },
+]
+
+const VIBE_PRESETS = [
+  '闺蜜口吻，像深夜语音转文字，有细节，不端着',
+  '理性拆解，短句，少形容词，多证据',
+  '反常识开场，先结论后解释，像真人复盘',
+  '情绪安抚+行动建议，像朋友给建议',
 ]
 
 export default function MarketingPage() {
@@ -52,7 +59,12 @@ export default function MarketingPage() {
   const [pack, setPack] = useState<MarketingPack | null>(null)
   const [product, setProduct] = useState<ProductType>('both')
   const [channel, setChannel] = useState<ChannelType>('xiaohongshu')
-  const [vibe, setVibe] = useState('像真人在讲自己的经历，口语化，有细节，不端着')
+  const [vibe, setVibe] = useState('闺蜜口吻，像深夜语音转文字，有细节，不端着')
+
+  const [unlockOrderId, setUnlockOrderId] = useState('')
+  const [unlockCode, setUnlockCode] = useState('')
+  const [unlockLoading, setUnlockLoading] = useState(false)
+  const [unlockError, setUnlockError] = useState('')
 
   useEffect(() => {
     trackGrowthEvent({ name: 'marketing_open', page: '/marketing' })
@@ -101,6 +113,29 @@ export default function MarketingPage() {
     }
   }
 
+  async function generateUnlockCode() {
+    setUnlockLoading(true)
+    setUnlockError('')
+    setUnlockCode('')
+    try {
+      const orderId = unlockOrderId.trim().toUpperCase()
+      if (!orderId) throw new Error('请输入订单号')
+
+      const res = await fetch('/api/admin-unlock-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: 'soul', orderId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.ok) throw new Error(data?.error || '生成失败')
+      setUnlockCode(String(data.code || ''))
+    } catch (e: any) {
+      setUnlockError(String(e?.message || '生成失败'))
+    } finally {
+      setUnlockLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-transparent px-4 pb-16 pt-10">
       <div className="app-shell space-y-6">
@@ -108,7 +143,7 @@ export default function MarketingPage() {
           <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Marketing Stage</div>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900 md:text-4xl">营销作战台</h1>
           <p className="mt-3 max-w-3xl text-sm text-slate-600 md:text-base">
-            现在是正式运营模式。先拿稳定转化数据，再放量。
+            先做活人感内容，再做转化。目标是让用户感觉在和真人说话，不是在看 AI 模板。
           </p>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -118,7 +153,7 @@ export default function MarketingPage() {
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
             >
               <option value="both">双产品联动</option>
-              <option value="soul">情感法医</option>
+              <option value="soul">关系透视</option>
               <option value="fortune">AI 占卜</option>
             </select>
 
@@ -140,7 +175,18 @@ export default function MarketingPage() {
             />
           </div>
           <div className="mt-2 text-xs text-slate-500">
-            活人感要点：具体场景、具体原话、短句口语、少一点“运营黑话”。
+            活人感四要素：具体时间、具体场景、一句原话、一个动作。缺一项就会像 AI。
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {VIBE_PRESETS.map((item) => (
+              <button
+                key={item}
+                onClick={() => setVibe(item)}
+                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                {item}
+              </button>
+            ))}
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -152,7 +198,7 @@ export default function MarketingPage() {
               onClick={() => trackGrowthEvent({ name: 'campaign_start', page: '/marketing', detail: 'soul-autopsy' })}
               className="btn-secondary"
             >
-              启动情感法医转化
+              启动关系透视转化
             </Link>
             <Link href="/growth" className="btn-secondary">查看增长看板</Link>
             <Link href="/" className="btn-secondary">返回首页</Link>
@@ -266,6 +312,43 @@ export default function MarketingPage() {
             ) : null}
           </section>
         ) : null}
+
+        <section className="glass-card p-5">
+          <h2 className="text-lg font-semibold text-slate-900">解锁码生成器（站长用）</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            客户支付后把订单号发你，你在这里一键生成解锁码回给她。
+          </p>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <input
+              value={unlockOrderId}
+              onChange={(e) => setUnlockOrderId(e.target.value)}
+              placeholder="订单号（例如 SLXXXX...）"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+            />
+            <button
+              onClick={generateUnlockCode}
+              disabled={unlockLoading}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+            >
+              {unlockLoading ? '生成中...' : '生成解锁码'}
+            </button>
+            <button
+              onClick={() => unlockCode && copy(unlockCode, 'unlock-code')}
+              disabled={!unlockCode}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              {copied === 'unlock-code' ? '已复制' : '复制解锁码'}
+            </button>
+          </div>
+
+          {unlockError ? <div className="mt-3 text-sm text-rose-600">{unlockError}</div> : null}
+          {unlockCode ? (
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700">
+              {unlockCode}
+            </div>
+          ) : null}
+        </section>
       </div>
     </div>
   )

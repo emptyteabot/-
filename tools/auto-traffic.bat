@@ -55,7 +55,7 @@ echo   1. 爬到的爆款内容在 MediaCrawler\data\
 echo   2. 打开 http://localhost:3000/content-launderer 洗稿
 echo   3. 洗完的内容发到各平台
 echo   4. 植入推广引导用户到:
-echo      - http://你的域名/soul-autopsy (灵魂尸检 ¥9.9)
+echo      - http://你的域名/soul-autopsy (关系透视 ¥9.9)
 echo      - http://你的域名/ai-fortune  (AI算命 ¥19.9)
 echo  ========================================
 echo.

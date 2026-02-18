@@ -6,7 +6,7 @@
 
 ## 已具备能力
 - 核心流程可跑通：上传聊天截图 -> OCR -> 关系分析报告。
-- 已有多产品入口：`/soul-autopsy`、`/ai-fortune`、`/content-launderer`。
+- 已有多产品入口：`/soul-autopsy`（关系透视）、`/ai-fortune`、`/content-launderer`（站长专用）。
 - 有基础增长埋点：本地事件 + PostHog（可选）。
 - 有基础部署配置：Cloudflare/OpenNext、Railway、Vercel 配置文件齐全。
 

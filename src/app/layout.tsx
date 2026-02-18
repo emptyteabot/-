@@ -7,7 +7,7 @@ import SiteFooter from '@/components/SiteFooter'
 import Analytics from '@/components/Analytics'
 
 export const metadata: Metadata = {
-  title: '月见 | AI 情感法医与赛博占卜',
+  title: '月见 | AI 关系透视与赛博占卜',
   description: '上传聊天记录截图，生成情感关系分析报告；也可使用 AI 占卜获取情绪安抚与行动建议。',
   keywords: 'AI情感分析,聊天记录分析,关系诊断,AI占卜,塔罗,小红书变现',
   openGraph: {
